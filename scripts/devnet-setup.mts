@@ -13,7 +13,7 @@ import {
 } from "@metaplex-foundation/mpl-toolbox";
 import bs58 from "bs58";
 
-import { makeUmi, signerFromSecret } from "../src/lib/solana/umi.ts";
+import { makeUmi, signerFromSecret } from "../src/lib/solana/umi";
 
 const rpc = process.argv.includes("--rpc") ? process.argv[process.argv.indexOf("--rpc") + 1] : "https://api.devnet.solana.com";
 const umi = makeUmi(rpc);
