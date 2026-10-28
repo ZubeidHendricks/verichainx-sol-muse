@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+!.env.example
+
+# program binaries fetched for LiteSVM (npm run fetch-programs)
+/tests/fixtures/*.so
+# local keys
+/keys/
