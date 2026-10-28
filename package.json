@@ -12,7 +12,8 @@
     "fetch-programs": "node scripts/fetch-programs.mjs",
     "pretest": "node scripts/fetch-programs.mjs",
     "db:generate": "drizzle-kit generate",
-    "check": "tsc --noEmit && eslint src tests && vitest run && next build"
+    "check": "tsc --noEmit && eslint src tests && vitest run && next build",
+    "devnet:setup": "tsx scripts/devnet-setup.mts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.13",
@@ -38,6 +39,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "litesvm": "^1.6.1",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.5"
   }
