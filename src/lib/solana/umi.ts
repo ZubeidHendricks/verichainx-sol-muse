@@ -1,4 +1,4 @@
-import { createSignerFromKeypair, type Signer, type Umi } from "@metaplex-foundation/umi";
+import { createSignerFromKeypair, type KeypairSigner, type Umi } from "@metaplex-foundation/umi";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { mplCore } from "@metaplex-foundation/mpl-core";
 import { mplToolbox } from "@metaplex-foundation/mpl-toolbox";
@@ -9,7 +9,7 @@ export function makeUmi(rpcUrl: string): Umi {
 }
 
 /** Loads a key from a base58 64-byte secret key or a JSON byte array (solana-keygen format). */
-export function signerFromSecret(umi: Umi, secret: string): Signer {
+export function signerFromSecret(umi: Umi, secret: string): KeypairSigner {
   const s = secret.trim();
   const bytes = s.startsWith("[") ? Uint8Array.from(JSON.parse(s)) : bs58.decode(s);
   if (bytes.length !== 64) throw new Error("expected a 64-byte Solana secret key");

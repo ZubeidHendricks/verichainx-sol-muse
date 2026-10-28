@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import type { Signer, Umi } from "@metaplex-foundation/umi";
+import type { KeypairSigner, Umi } from "@metaplex-foundation/umi";
 
 import type { Cluster } from "@/lib/chains";
 import { signerFromSecret, makeUmi } from "@/lib/solana/umi";
@@ -9,7 +9,7 @@ import { RpcChain, type ChainPort } from "./chain";
 import { openDb, type Db } from "./db";
 
 /** Service keys (§7.5). The settlement key holds nothing; it is only ever a transfer delegate. */
-export type ServiceKeys = { feePayer: Signer; settlement: Signer; anchor: Signer };
+export type ServiceKeys = { feePayer: KeypairSigner; settlement: KeypairSigner; anchor: KeypairSigner };
 
 export type AppConfig = {
   cluster: Cluster;

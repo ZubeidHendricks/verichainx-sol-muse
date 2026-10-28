@@ -6,6 +6,12 @@ import { TemplateMismatch } from "@/lib/solana/purchase";
 import type { App } from "./app";
 import { NotFound, Refused, checkOffer, loadOffer } from "./catalog";
 import { refreshOrder, startPurchase } from "./pay";
+import { localSource, shop } from "./agents/buyer";
+import { answerNeed } from "./agents/merchant";
+import { envelopeSchema } from "@/lib/envelope";
+import { hashRecord } from "@/lib/canonical";
+import { schema } from "./db";
+import { eq } from "drizzle-orm";
 
 /**
  * HTTP handlers, kept free of Next.js so tests can call them with plain Requests. The route files
@@ -152,4 +158,64 @@ export function actionsJson(app: App): Response {
 
 export function preflight(app: App): Response {
   return new Response(null, { status: 204, headers: actionHeaders(app) });
+}
+
+/** POST /agent/v1/offers (§8.2): a `need` envelope in, signed `offer` / `decline` envelopes out. */
+export async function merchantAgentPost(app: App, req: Request): Promise<Response> {
+  return guarded(app, async () => {
+    const need = envelopeSchema.safeParse(await req.json().catch(() => null));
+    if (!need.success || need.data.type !== "need") throw new Refused("expected a vcx-agent/1 need envelope");
+    return json(app, { offers: await answerNeed(app, need.data) });
+  });
+}
+
+/** GET /.well-known/vcx-agent.json (§10): how other apps' agents reach this one. */
+export function wellKnown(app: App): Response {
+  const base = app.config.appUrl;
+  return json(app, {
+    v: "vcx-agent/1",
+    name: "VeriChainX Sol",
+    agent_endpoint: `${base}/agent/v1/offers`,
+    verify_endpoint: `${base}/api/verify/{asset}`,
+    chains: [solanaChain(app.config.cluster)],
+    currencies: [{ symbol: "USDC", chain: solanaChain(app.config.cluster), mint: app.config.usdcMint }],
+    settlement_key: app.keys.settlement.publicKey,
+    buyer_agent_key: app.keys.anchor.publicKey,
+  });
+}
+
+/** POST /api/agent/shop {message}: the shopper's agent (scripted engine until an LLM key is set). */
+export async function shopPost(app: App, req: Request): Promise<Response> {
+  return guarded(app, async () => {
+    const { message } = (await req.json().catch(() => ({}))) as { message?: unknown };
+    if (typeof message !== "string" || !message.trim() || message.length > 500) throw new Refused("message is required");
+    return json(app, await shop(app, message.trim(), [localSource(app)]));
+  });
+}
+
+/** GET /api/verify/:asset: public check of owner, listing and origin record for any item NFT. */
+export async function verifyAssetGet(app: App, assetId: string): Promise<Response> {
+  return guarded(app, async () => {
+    const asset = await app.chain.getAsset(assetId);
+    if (!asset) throw new NotFound(`no asset ${assetId}`);
+    const [owner] = await app.db.select().from(schema.merchants).where(eq(schema.merchants.wallet, asset.owner));
+    const [item] = await app.db.select().from(schema.items).where(eq(schema.items.asset, assetId));
+    const h = attribute(asset, "registration_hash");
+    const [rec] = h ? await app.db.select().from(schema.records).where(eq(schema.records.hash, h)) : [];
+    const d = asset.transferDelegate?.authority;
+    return json(app, {
+      asset: assetId,
+      name: asset.name,
+      owner: asset.owner,
+      owner_merchant: owner ? { id: owner.id, name: owner.name, domain: owner.domain, verified: Boolean(owner.domainVerifiedAt) } : null,
+      listed: d?.type === "Address" && d.address === app.keys.settlement.publicKey,
+      origin: h ? {
+        registration_hash: h,
+        record_sig: rec?.sig ?? null,
+        recomputes: rec ? hashRecord(rec.payload) === h : false,
+        record: rec?.payload ?? null,
+      } : null,
+      item: item ? { id: item.id, title: item.title, status: item.status } : null,
+    });
+  });
 }

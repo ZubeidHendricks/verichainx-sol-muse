@@ -26,10 +26,14 @@ Work in progress, devnet only.
 - Solana Pay transaction request (`/api/pay/:offer`).
 - Blink (`/api/actions/offer/:offer`, `/actions.json`).
 - Order confirmation by reference (`/api/orders/:id`).
+- Merchant agents (`POST /agent/v1/offers`) and discovery (`/.well-known/vcx-agent.json`).
+- Verifier: seller, ownership, origin record, price and replica language.
+- Buyer agent, scripted engine, with the ranking guardrail in code (`POST /api/agent/shop`).
+- Public verification by asset (`/api/verify/:asset`).
 
 **Next:**
 - Devnet setup script and a real devnet purchase.
-- Merchant and buyer agents.
+- LLM engine for the buyer agent (provider to confirm), with AI photo comparison.
 - Web UI.
 - SIWS and DNS verification.
 - Shopify.
@@ -73,5 +77,6 @@ src/server/
   handlers.ts        HTTP handlers for the routes in src/app/
   chain.ts           ChainPort: RPC implementation
   sealed.ts          AES-GCM for service-held keys
+  agents/            merchant agents, verifier, buyer agent
 tests/               Vitest; LiteSVM for anything on-chain, in-memory PGlite for the database
 ```

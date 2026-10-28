@@ -154,7 +154,7 @@ export async function makeOffer(app: App, itemId: string, extra: { pitch?: strin
   const id = newId("of");
   const body: OfferBody = {
     offer_id: id, title: item.title, price: formatUsdc(item.priceUnits), currency: "USDC", chain,
-    asset: item.asset!, merchant: m.id, merchant_domain: m.domain ?? undefined, pitch: extra.pitch,
+    asset: item.asset!, merchant: m.id, merchant_domain: m.domain ?? undefined, seller: m.wallet, pitch: extra.pitch,
     image: item.photos[0], pay_url: `${app.config.appUrl}/api/pay/${id}`,
     action_url: `${app.config.appUrl}/api/actions/offer/${id}`, in_reply_to: extra.inReplyTo,
   };

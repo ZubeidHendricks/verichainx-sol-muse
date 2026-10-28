@@ -23,6 +23,8 @@ export const offerBody = z.object({
   asset: z.string().optional(),
   merchant: z.string(),
   merchant_domain: z.string().optional(),
+  seller: z.string().optional(), // the payout wallet that should hold the asset
+  origin_price: z.string().optional(),
   pitch: z.string().optional(),
   image: z.string().optional(),
   pay_url: z.string().optional(),

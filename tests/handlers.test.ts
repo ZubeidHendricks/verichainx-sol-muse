@@ -1,8 +1,11 @@
-import { signTransaction } from "@metaplex-foundation/umi";
+import { generateSigner, signTransaction } from "@metaplex-foundation/umi";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { createMerchant, listItem, makeOffer, registerItem } from "@/server/catalog";
-import { actionGet, actionPost, actionsJson, orderGet, payGet, payPost } from "@/server/handlers";
+import { verifyEnvelope } from "@/lib/envelope";
+import {
+  actionGet, actionPost, actionsJson, merchantAgentPost, orderGet, payGet, payPost, shopPost, verifyAssetGet, wellKnown,
+} from "@/server/handlers";
 
 import { makeTestApp, type TestApp } from "./testApp";
 
@@ -72,5 +75,47 @@ describe("Solana Pay and Actions endpoints", () => {
 
   it("publishes actions.json rules", async () => {
     expect((await actionsJson(app).json()).rules[0]).toEqual({ pathPattern: "/o/*", apiPath: "/api/actions/offer/*" });
+  });
+});
+
+describe("agent and verify endpoints", () => {
+  let app: TestApp, asset: string;
+
+  beforeEach(async () => {
+    app = await makeTestApp();
+    const m = await createMerchant(app, { name: "Lerato Bags", domain: "lerato-bags.example" });
+    const item = await registerItem(app, m.id, { title: "Woven Market Tote", description: "An everyday tote.",
+      price: "129", photos: ["https://cdn.example.test/tote-1.jpg"] });
+    await listItem(app, item.id);
+    asset = item.asset!;
+  });
+
+  it("answers another app's need with signed offers", async () => {
+    const need = { v: "vcx-agent/1", type: "need", id: "n1", from: "hedera:testnet:0.0.11194128",
+      created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 60_000).toISOString(),
+      body: { text: "everyday tote", budget: "200" } };
+    const res = await merchantAgentPost(app, post(need));
+    const { offers } = await res.json();
+    expect(offers).toHaveLength(1);
+    expect(verifyEnvelope(offers[0])).toEqual({ ok: true });
+    expect(offers[0].body).toMatchObject({ title: "Woven Market Tote", in_reply_to: "n1", currency: "USDC" });
+    expect((await merchantAgentPost(app, post({ type: "offer" }))).status).toBe(400);
+  });
+
+  it("publishes discovery and verifies an asset publicly", async () => {
+    const wk = await wellKnown(app).json();
+    expect(wk).toMatchObject({ v: "vcx-agent/1", agent_endpoint: "https://sol.example.test/agent/v1/offers",
+      settlement_key: app.keys.settlement.publicKey });
+    const v = await (await verifyAssetGet(app, asset)).json();
+    expect(v).toMatchObject({ listed: true, owner_merchant: { name: "Lerato Bags", verified: false },
+      origin: { recomputes: true }, item: { title: "Woven Market Tote", status: "listed" } });
+    expect((await verifyAssetGet(app, generateSigner(app.umi).publicKey)).status).toBe(404);
+  });
+
+  it("runs the shopper agent over HTTP", async () => {
+    const out = await (await shopPost(app, post({ message: "everyday tote under $200" }))).json();
+    expect(out.engine).toBe("scripted");
+    expect(out.results[0].offer.title).toBe("Woven Market Tote");
+    expect((await shopPost(app, post({}))).status).toBe(400);
   });
 });
