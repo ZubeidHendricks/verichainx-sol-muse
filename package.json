@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "fetch-programs": "node scripts/fetch-programs.mjs",
     "pretest": "node scripts/fetch-programs.mjs",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "check": "tsc --noEmit && eslint src tests && vitest run && next build"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.13",
