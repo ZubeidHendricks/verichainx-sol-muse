@@ -10,9 +10,11 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "fetch-programs": "node scripts/fetch-programs.mjs",
-    "pretest": "node scripts/fetch-programs.mjs"
+    "pretest": "node scripts/fetch-programs.mjs",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.13",
     "@metaplex-foundation/mpl-core": "^1.10.0",
     "@metaplex-foundation/mpl-toolbox": "^0.11.5",
     "@metaplex-foundation/umi": "^1.6.0",
@@ -20,6 +22,7 @@
     "@noble/curves": "^1.9.7",
     "@noble/hashes": "^1.8.0",
     "bs58": "^6.0.0",
+    "drizzle-orm": "^0.45.4",
     "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -30,6 +33,7 @@
     "@types/node": "^24.19.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "litesvm": "^1.6.1",

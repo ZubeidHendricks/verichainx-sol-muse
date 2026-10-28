@@ -1,0 +1,66 @@
+import { bigint, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+
+/** §12. Amounts are USDC base units. */
+export const merchants = pgTable("merchants", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  domain: text("domain"),
+  domainVerifiedAt: timestamp("domain_verified_at", { withTimezone: true }),
+  wallet: text("wallet").notNull().unique(), // owns the merchant's assets and receives USDC
+  custody: text("custody", { enum: ["vault", "own_wallet"] }).notNull(),
+  // Devnet only: a vault key per merchant, never shared, so the owner check still tells merchants apart.
+  vaultSecretSealed: text("vault_secret_sealed"),
+  agentPubkey: text("agent_pubkey").notNull(),
+  agentSecretSealed: text("agent_secret_sealed"), // service-held agent key, sealed with KEY_SEAL_SECRET
+  collectionAsset: text("collection_asset"),
+  shopifyShop: text("shopify_shop"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const items = pgTable("items", {
+  id: text("id").primaryKey(),
+  merchantId: text("merchant_id").notNull().references(() => merchants.id),
+  asset: text("asset").unique(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  priceUnits: bigint("price_units", { mode: "bigint" }).notNull(),
+  photos: jsonb("photos").$type<string[]>().notNull().default([]),
+  fingerprint: jsonb("fingerprint"),
+  registrationHash: text("registration_hash"),
+  originSig: text("origin_sig"),
+  status: text("status", { enum: ["draft", "listed", "sold", "delisted"] }).notNull().default("draft"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const offers = pgTable("offers", {
+  id: text("id").primaryKey(),
+  itemId: text("item_id").notNull().references(() => items.id),
+  merchantId: text("merchant_id").notNull().references(() => merchants.id),
+  priceUnits: bigint("price_units", { mode: "bigint" }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  envelope: jsonb("envelope").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("offers_item_idx").on(t.itemId)]);
+
+export type OrderEvent = { status: string; at: string; sig?: string; note?: string };
+
+export const orders = pgTable("orders", {
+  id: text("id").primaryKey(),
+  offerId: text("offer_id").notNull().references(() => offers.id),
+  buyerWallet: text("buyer_wallet").notNull(),
+  reference: text("reference").notNull(),
+  orderHash: text("order_hash").notNull(),
+  feeBps: integer("fee_bps").notNull(),
+  txSig: text("tx_sig"),
+  status: text("status", { enum: ["pending", "paid", "shipped", "delivered", "failed"] }).notNull().default("pending"),
+  events: jsonb("events").$type<OrderEvent[]>().notNull().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("orders_reference_idx").on(t.reference), index("orders_offer_buyer_idx").on(t.offerId, t.buyerWallet)]);
+
+/** Memo-anchored records and their full JSON (§7.3). */
+export const records = pgTable("records", {
+  sig: text("sig").primaryKey(),
+  kind: text("kind").notNull(),
+  payload: jsonb("payload").notNull(),
+  hash: text("hash").notNull(),
+});

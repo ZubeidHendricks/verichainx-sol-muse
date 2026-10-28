@@ -20,12 +20,19 @@ Work in progress, devnet only.
 - Core collection, item mint (with origin record), list and delist.
 - The atomic purchase transaction.
 - The settlement-key template guard and the on-chain owner check.
+- Postgres schema (Drizzle; PGlite locally and in tests).
+- Merchants with sealed per-merchant vault and agent keys.
+- Registration, listing and signed offers.
+- Solana Pay transaction request (`/api/pay/:offer`).
+- Blink (`/api/actions/offer/:offer`, `/actions.json`).
+- Order confirmation by reference (`/api/orders/:id`).
 
 **Next:**
-- Database.
-- Solana Pay and Blink endpoints.
+- Devnet setup script and a real devnet purchase.
 - Merchant and buyer agents.
 - Web UI.
+- SIWS and DNS verification.
+- Shopify.
 
 ## Develop
 
@@ -59,5 +66,12 @@ src/lib/
     items.ts         collection, register (mint + origin memo), list, delist, ownership check
     memo.ts          raw Memo instruction
     umi.ts           Umi setup and key loading
-tests/               Vitest; *.svm.test.ts run on LiteSVM
+src/server/
+  db/                Drizzle schema and PGlite setup (migrations in drizzle/)
+  catalog.ts         merchants, item registration, list/delist, signed offers
+  pay.ts             startPurchase (Solana Pay + Blinks), refreshOrder (confirm by reference)
+  handlers.ts        HTTP handlers for the routes in src/app/
+  chain.ts           ChainPort: RPC implementation
+  sealed.ts          AES-GCM for service-held keys
+tests/               Vitest; LiteSVM for anything on-chain, in-memory PGlite for the database
 ```

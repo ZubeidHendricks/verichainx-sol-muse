@@ -45,3 +45,5 @@ next-env.d.ts
 /tests/fixtures/*.so
 # local keys
 /keys/
+# local PGlite data
+/.data/

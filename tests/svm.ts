@@ -20,9 +20,11 @@ import {
   mintTokensToChecked,
 } from "@metaplex-foundation/mpl-toolbox";
 import { address, getTransactionDecoder, lamports as kitLamports } from "@solana/kit";
+import bs58 from "bs58";
 import { FailedTransactionMetadata, LiteSVM } from "litesvm";
 
 import { makeUmi } from "@/lib/solana/umi";
+import type { ChainPort, FoundTx } from "@/server/chain";
 
 const CORE_SO = fileURLToPath(new URL("./fixtures/mpl_core.so", import.meta.url));
 
@@ -30,6 +32,8 @@ const CORE_SO = fileURLToPath(new URL("./fixtures/mpl_core.so", import.meta.url)
 export class LocalChain {
   readonly svm = new LiteSVM();
   readonly umi = makeUmi("http://127.0.0.1:8899"); // used only to build and sign
+  /** Every submitted transaction, indexed the way getSignaturesForAddress would see it. */
+  readonly history: (FoundTx & { accounts: string[] })[] = [];
 
   constructor() {
     this.svm.addProgramFromFile(address(MPL_CORE_PROGRAM_ID), CORE_SO);
@@ -46,6 +50,13 @@ export class LocalChain {
   /** Sends a fully signed transaction; throws with the program logs on failure. */
   submit(tx: Transaction) {
     const res = this.svm.sendTransaction(getTransactionDecoder().decode(this.umi.transactions.serialize(tx)));
+    const m = tx.message;
+    this.history.push({
+      signature: bs58.encode(tx.signatures[0]), ok: !(res instanceof FailedTransactionMetadata),
+      accounts: m.accounts, memos: m.instructions
+        .filter((ix) => m.accounts[ix.programIndex] === "Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo")
+        .map((ix) => new TextDecoder().decode(ix.data)),
+    });
     if (res instanceof FailedTransactionMetadata) {
       throw new Error(`transaction failed: ${JSON.stringify(res.err())}\n${res.meta().logs().join("\n")}`);
     }
@@ -103,5 +114,30 @@ export class LocalChain {
       .add(createIdempotentAssociatedToken(this.umi, { payer: authority, ata, owner: publicKey(owner), mint: publicKey(mint) }))
       .add(mintTokensToChecked(this.umi, { mint: publicKey(mint), token: ata, mintAuthority: authority, amount, decimals: 6 })),
     authority);
+  }
+}
+
+/** The service's view of a LocalChain. */
+export class SvmChainPort implements ChainPort {
+  constructor(readonly chain: LocalChain) {}
+
+  async getAsset(asset: string) {
+    return this.chain.svm.getAccount(address(asset)).exists ? this.chain.asset(asset) : null;
+  }
+
+  async latestBlockhash() {
+    return this.chain.blockhash();
+  }
+
+  async findByReference(reference: string) {
+    return this.chain.history.filter((t) => t.accounts.includes(reference))
+      .map(({ signature, ok, memos }) => ({ signature, ok, memos }));
+  }
+
+  async send(builder: TransactionBuilder) {
+    const b = builder.setBlockhash(this.chain.blockhash());
+    const tx = await signTransaction(b.build(this.chain.umi), b.getSigners(this.chain.umi));
+    this.chain.submit(tx);
+    return bs58.encode(tx.signatures[0]);
   }
 }
