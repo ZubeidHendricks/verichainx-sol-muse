@@ -30,6 +30,23 @@ export function remoteSource(endpoint: string, timeoutMs = 5000): OfferSource {
 }
 
 /** `by` says who chose the step: the model, or code (the scripted engine, or checks code always runs). */
+/**
+ * Other apps' agents (§10), from AGENT_PEERS: comma-separated base URLs. Each publishes its agent
+ * endpoint at /.well-known/vcx-agent.json; a peer that can't be reached is skipped for that run.
+ */
+export function peerSources(peers = process.env.AGENT_PEERS ?? ""): OfferSource[] {
+  return peers.split(",").map((p) => p.trim().replace(/\/$/, "")).filter(Boolean).map((base) => ({
+    name: new URL(base).host,
+    async request(need) {
+      const r = await fetch(`${base}/.well-known/vcx-agent.json`, { signal: AbortSignal.timeout(5000) });
+      if (!r.ok) throw new Error(`${base}: no agent manifest (HTTP ${r.status})`);
+      const { agent_endpoint } = (await r.json()) as { agent_endpoint?: string };
+      if (!agent_endpoint) throw new Error(`${base}: manifest has no agent_endpoint`);
+      return remoteSource(agent_endpoint).request(need);
+    },
+  }));
+}
+
 export type TraceStep = { tool: string; input: unknown; output: unknown; by?: string };
 export type Ranked = Verdict & { rank: number; final: Recommendation; model_reason?: string };
 export type ShopResult = {

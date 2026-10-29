@@ -9,7 +9,8 @@ import { refreshOrder, startPurchase } from "./pay";
 import { assetReport, offerStatus } from "./views";
 import { offers } from "./db/schema";
 import { inArray } from "drizzle-orm";
-import { localSource, shopWithModels } from "./agents/buyer";
+import { localSource, peerSources, shopWithModels } from "./agents/buyer";
+import { copierSource } from "./agents/copier";
 import { answerNeed } from "./agents/merchant";
 import { envelopeSchema } from "@/lib/envelope";
 
@@ -189,7 +190,8 @@ export async function shopPost(app: App, req: Request): Promise<Response> {
   return guarded(app, async () => {
     const { message } = (await req.json().catch(() => ({}))) as { message?: unknown };
     if (typeof message !== "string" || !message.trim() || message.length > 500) throw new Refused("message is required");
-    const out = await shopWithModels(app, message.trim(), [localSource(app)], app.agentModels ?? []);
+    const sources = [localSource(app), ...peerSources(), ...(process.env.DEMO_COPIER === "1" ? [copierSource(app)] : [])];
+    const out = await shopWithModels(app, message.trim(), sources, app.agentModels ?? []);
     // Offers this app holds get a pay page; ones from other apps' agents are shown but paid there.
     const ids = out.results.map((r) => r.offer?.offer_id).filter((id): id is string => Boolean(id));
     const here = new Set((ids.length ? await app.db.select({ id: offers.id }).from(offers).where(inArray(offers.id, ids)) : [])

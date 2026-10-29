@@ -1,10 +1,11 @@
 import { generateSigner } from "@metaplex-foundation/umi";
 import { eq } from "drizzle-orm";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { caip10, CHAINS } from "@/lib/chains";
 import { newEnvelope, signEnvelope, type Envelope } from "@/lib/envelope";
-import { localSource, parseBudget, shop, type OfferSource } from "@/server/agents/buyer";
+import { localSource, parseBudget, peerSources, shop, type OfferSource } from "@/server/agents/buyer";
+import { copierSource as demoCopier } from "@/server/agents/copier";
 import { keywords, relevance } from "@/server/agents/merchant";
 import { enforceGuardrail, replicaTerms, verifyOffer } from "@/server/agents/verify";
 import { createMerchant, listItem, registerItem, type Item, type Merchant } from "@/server/catalog";
@@ -106,6 +107,29 @@ describe("buyer and merchant agents", () => {
     expect(out.trace.some((t) => JSON.stringify(t.output).includes("timeout"))).toBe(true);
   });
 
+  it("flags every offer from the demo copier as Avoid, while the real ones stay recommended", async () => {
+    const out = await shop(app, "everyday tote under $400", [localSource(app), demoCopier(app)]);
+    const copies = out.results.filter((r) => r.offer?.offer_id.startsWith("cp_"));
+    expect(copies.length).toBe(2);
+    expect(copies.every((r) => r.final === "avoid" && r.reasons[0].includes("NFT belongs to someone else"))).toBe(true);
+    expect(copies.map((r) => r.offer?.merchant_domain)).toContain("lerato-bags-outlet.example");
+    expect(out.results[0].final).toBe("recommended");
+  });
+
+  it("asks other apps' agents found through their manifest, and skips ones that are down", async () => {
+    const [copy] = await demoCopier(app).request(newEnvelope("need", "x", { text: "tote" }) as Envelope);
+    vi.stubGlobal("fetch", async (url: string) => {
+      if (url === "https://hedera.example/.well-known/vcx-agent.json") return Response.json({ agent_endpoint: "https://hedera.example/agent/v1/offers" });
+      if (url === "https://hedera.example/agent/v1/offers") return Response.json({ offers: [copy] });
+      return new Response("down", { status: 503 });
+    });
+    const out = await shop(app, "everyday tote", peerSources("https://hedera.example/, https://sei.example"));
+    expect(out.trace.filter((t) => t.tool === "request_offers").map((t) => t.input)).toEqual([
+      { source: "hedera.example" }, { source: "sei.example" }]);
+    expect(JSON.stringify(out.trace)).toContain("no agent manifest (HTTP 503)");
+    expect(out.results.map((r) => r.final)).toEqual(["avoid"]);
+  });
+
   it("downgrades a model's 'recommended' on any offer that failed a hard check", async () => {
     const [env] = await copierSource(app, tote.asset!, generateSigner(app.umi).publicKey).request(
       newEnvelope("need", "x", { text: "tote" }) as Envelope);
@@ -115,6 +139,8 @@ describe("buyer and merchant agents", () => {
     expect(enforceGuardrail(unverified, "recommended")).toBe("caution");
   });
 });
+
+afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("agent helpers", () => {
   it("reads budgets and keywords", () => {
