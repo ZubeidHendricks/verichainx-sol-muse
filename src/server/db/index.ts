@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 
 import { PGlite } from "@electric-sql/pglite";
@@ -14,6 +15,7 @@ export type Db = Awaited<ReturnType<typeof openDb>>;
  * local dev, memory for tests. Neon is added at deploy time behind the same Drizzle schema.
  */
 export async function openDb(dataDir?: string) {
+  if (dataDir) mkdirSync(dataDir, { recursive: true });
   const db = drizzle({ client: new PGlite(dataDir), schema });
   await migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
   return db;

@@ -30,10 +30,12 @@ Work in progress, devnet only.
 - Verifier: seller, ownership, origin record, price and replica language.
 - Buyer agent, scripted engine, with the ranking guardrail in code (`POST /api/agent/shop`).
 - Public verification by asset (`/api/verify/:asset`).
+- Devnet setup and an end-to-end devnet purchase script. The first run, on 2026-10-29, was
+  [this purchase](https://explorer.solana.com/tx/4uYM5ztLWhEtbFeSygss3LUmG7yqkKD5zzjdBG5gg5KdvzLfVtGkiTtyMQ6ctZj6oF75dJiytwZ9LRMtcs2H9Edq?cluster=devnet):
+  129 USDC split 127.71 to the merchant and 1.29 to the treasury, with the NFT moving to the buyer, in one transaction.
 
 **Next:**
-- Devnet setup script and a real devnet purchase.
-- LLM engine for the buyer agent (provider to confirm), with AI photo comparison.
+- LLM engine for the buyer agent on Groq (`GROQ_API_KEY`), with AI photo comparison.
 - Web UI.
 - SIWS and DNS verification.
 - Shopify.
@@ -55,6 +57,9 @@ A pre-commit hook (`scripts/secret-scan.sh`) blocks secret keys and API keys. En
 ```bash
 git config core.hooksPath .githooks
 ```
+
+Devnet: `npm run devnet:setup` creates the service keys, a test USDC mint and `.env.local`. Fund the fee
+payer it prints at https://faucet.solana.com. Then `npm run devnet:e2e` runs one real purchase.
 
 ## Layout
 

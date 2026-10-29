@@ -78,5 +78,9 @@ const env = {
     : randomBytes(32).toString("base64url"),
   APP_URL: "http://localhost:3000",
 };
-writeFileSync(".env.local", Object.entries(env).map(([k, v]) => `${k}=${v}`).join("\n") + "\n", { mode: 0o600 });
+// Keep anything else already in .env.local (API keys added by hand).
+const kept = existsSync(".env.local")
+  ? readFileSync(".env.local", "utf8").split("\n").filter((l) => /^[A-Z_]+=/.test(l) && !(l.split("=")[0] in env))
+  : [];
+writeFileSync(".env.local", [...Object.entries(env).map(([k, v]) => `${k}=${v}`), ...kept].join("\n") + "\n", { mode: 0o600 });
 console.log("wrote .env.local (gitignored). Keys are in keys/ (gitignored).");

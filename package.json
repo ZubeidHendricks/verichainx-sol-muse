@@ -13,7 +13,8 @@
     "pretest": "node scripts/fetch-programs.mjs",
     "db:generate": "drizzle-kit generate",
     "check": "tsc --noEmit && eslint src tests && vitest run && next build",
-    "devnet:setup": "tsx scripts/devnet-setup.mts"
+    "devnet:setup": "tsx scripts/devnet-setup.mts",
+    "devnet:e2e": "tsx scripts/devnet-e2e.mts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.13",
