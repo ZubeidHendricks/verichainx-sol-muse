@@ -4,7 +4,7 @@ import { parseUsdc } from "@/lib/money";
 import type { App } from "@/server/app";
 import { openDb } from "@/server/db";
 
-import { LocalChain, SvmChainPort } from "./svm";
+import { LocalChain, SvmChainPort } from "@/server/local-chain";
 
 export type TestApp = App & { local: LocalChain; buyer: Signer; clock: { now: Date } };
 

@@ -116,5 +116,11 @@ describe("own-wallet shops and resale", () => {
     expect((await refreshOrder(app, resold.order.id)).status).toBe("paid");
     expect(app.local.asset(item.asset!).owner).toBe(second.publicKey);
     expect((await getItem(app, item.id)).status).toBe("sold");
+
+    // One shop per wallet: naming a shop takes over the resale shop, and a second shop is refused.
+    const named = await createMerchant(app, { name: "Thandi's Finds", domain: "Thandi.example", wallet: app.buyer.publicKey });
+    expect(named).toMatchObject({ id: resale.merchantId, name: "Thandi's Finds", domain: "thandi.example" });
+    await expect(createMerchant(app, { name: "Another", wallet: app.buyer.publicKey }))
+      .rejects.toThrow("This wallet already runs Thandi's Finds. Each shop needs its own wallet.");
   });
 });

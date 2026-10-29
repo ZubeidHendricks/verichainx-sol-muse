@@ -1,4 +1,4 @@
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
 import {
   generateSigner,
@@ -24,11 +24,15 @@ import bs58 from "bs58";
 import { FailedTransactionMetadata, LiteSVM } from "litesvm";
 
 import { makeUmi } from "@/lib/solana/umi";
-import type { ChainPort, FoundTx } from "@/server/chain";
+import type { ChainPort, FoundTx } from "./chain";
 
-const CORE_SO = fileURLToPath(new URL("./fixtures/mpl_core.so", import.meta.url));
+// Fetched by `npm test` (scripts/fetch-programs.mjs). Resolved from the project root so it works bundled too.
+const CORE_SO = join(process.cwd(), "tests/fixtures/mpl_core.so");
 
-/** An in-process Solana VM with SPL Token, ATA, Memo and the mainnet Metaplex Core binary loaded. */
+/**
+ * An in-process Solana VM (LiteSVM) with SPL Token, ATA, Memo and the mainnet Metaplex Core binary loaded.
+ * Tests use it, and so does the local demo (`VCX_LOCAL_CHAIN=1`).
+ */
 export class LocalChain {
   readonly svm = new LiteSVM();
   readonly umi = makeUmi("http://127.0.0.1:8899"); // used only to build and sign
@@ -40,7 +44,12 @@ export class LocalChain {
   }
 
   fund(...signers: Signer[]) {
-    for (const s of signers) this.svm.airdrop(address(s.publicKey), kitLamports(10_000_000_000n));
+    for (const s of signers) this.airdrop(s.publicKey);
+  }
+
+  /** 10 SOL. */
+  airdrop(owner: string) {
+    this.svm.airdrop(address(owner), kitLamports(10_000_000_000n));
   }
 
   blockhash(): string {

@@ -237,3 +237,20 @@ export async function siwsPost(app: App, req: Request): Promise<Response> {
 export function logoutPost(app: App): Response {
   return Response.json({ ok: true }, { headers: { "set-cookie": setCookie(app, SESSION_COOKIE, "", 0) } });
 }
+
+/** POST /api/local/{fund,send}: the local demo's stand-ins for a faucet and an RPC node. 404 anywhere else. */
+export async function localPost(app: App, req: Request, action: string): Promise<Response> {
+  return guarded(app, async () => {
+    if (process.env.VCX_LOCAL_CHAIN !== "1") throw new NotFound("not found");
+    const local = await import("./local");
+    const body = (await req.json().catch(() => ({}))) as { address?: unknown; transaction?: unknown };
+    if (action === "fund" && typeof body.address === "string") {
+      await local.fundWallet(app, body.address);
+      return json(app, { funded: body.address });
+    }
+    if (action === "send" && typeof body.transaction === "string") {
+      return json(app, { signature: local.submitSigned(app, body.transaction) });
+    }
+    throw new NotFound("not found");
+  });
+}

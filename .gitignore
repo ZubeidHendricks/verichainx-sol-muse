@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-*/
 /out/
 
 # production
@@ -47,3 +48,7 @@ next-env.d.ts
 /keys/
 # local PGlite data
 /.data/
+
+# playwright
+/test-results/
+/playwright-report/

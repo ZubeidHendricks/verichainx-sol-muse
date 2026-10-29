@@ -46,29 +46,34 @@ const shared = globalThis as typeof globalThis & { __vcxApp?: Promise<App> };
 
 /** The app wired from the environment. Tests build their own App with LiteSVM and in-memory PGlite. */
 export function getApp(): Promise<App> {
-  shared.__vcxApp ??= (async () => {
-    const umi = makeUmi(env("SOLANA_RPC_URL"));
-    return {
-      db: await openDb(process.env.PGLITE_DIR ?? ".data/pglite"),
-      chain: new RpcChain(umi),
-      umi,
-      keys: {
-        feePayer: signerFromSecret(umi, env("FEE_PAYER_SECRET")),
-        settlement: signerFromSecret(umi, env("SETTLEMENT_SECRET")),
-        anchor: signerFromSecret(umi, env("ANCHOR_SECRET")),
-      },
-      config: {
-        cluster: (process.env.SOLANA_CLUSTER ?? "devnet") as Cluster,
-        appUrl: env("APP_URL").replace(/\/$/, ""),
-        usdcMint: env("USDC_MINT"),
-        treasury: env("TREASURY_ADDRESS"),
-        feeBps: Number(process.env.PROTOCOL_FEE_BPS ?? 100),
-        sealSecret: env("KEY_SEAL_SECRET"),
-        offerTtlMinutes: 15,
-      },
-      now: () => new Date(),
-      agentModels: modelsFromEnv(),
-    };
-  })();
+  // The local demo loads LiteSVM, a dev dependency, so it's imported only when asked for.
+  shared.__vcxApp ??= process.env.VCX_LOCAL_CHAIN === "1"
+    ? import("./local").then((m) => m.localApp(modelsFromEnv()))
+    : rpcApp();
   return shared.__vcxApp;
+}
+
+async function rpcApp(): Promise<App> {
+  const umi = makeUmi(env("SOLANA_RPC_URL"));
+  return {
+    db: await openDb(process.env.PGLITE_DIR ?? ".data/pglite"),
+    chain: new RpcChain(umi),
+    umi,
+    keys: {
+      feePayer: signerFromSecret(umi, env("FEE_PAYER_SECRET")),
+      settlement: signerFromSecret(umi, env("SETTLEMENT_SECRET")),
+      anchor: signerFromSecret(umi, env("ANCHOR_SECRET")),
+    },
+    config: {
+      cluster: (process.env.SOLANA_CLUSTER ?? "devnet") as Cluster,
+      appUrl: env("APP_URL").replace(/\/$/, ""),
+      usdcMint: env("USDC_MINT"),
+      treasury: env("TREASURY_ADDRESS"),
+      feeBps: Number(process.env.PROTOCOL_FEE_BPS ?? 100),
+      sealSecret: env("KEY_SEAL_SECRET"),
+      offerTtlMinutes: 15,
+    },
+    now: () => new Date(),
+    agentModels: modelsFromEnv(),
+  };
 }

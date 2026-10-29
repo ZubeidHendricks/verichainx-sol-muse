@@ -8,7 +8,7 @@ import { attribute, buildDelistItem, buildListItem, buildMerchantCollection, bui
 import { buildPurchase, preparePurchase, type PurchaseTerms } from "@/lib/solana/purchase";
 import { decodeMemo } from "@/lib/records";
 
-import { LocalChain } from "./svm";
+import { LocalChain } from "@/server/local-chain";
 
 /**
  * Runs the real programs (SPL Token, ATA, Memo and mainnet Metaplex Core) in LiteSVM, so these tests

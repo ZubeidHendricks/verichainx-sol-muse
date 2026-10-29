@@ -27,7 +27,8 @@ Work in progress, devnet only.
 - Blink (`/api/actions/offer/:offer`, `/actions.json`).
 - Order confirmation by reference (`/api/orders/:id`).
 - Merchant agents (`POST /agent/v1/offers`) and discovery (`/.well-known/vcx-agent.json`).
-- Verifier: seller, ownership, origin record, price and replica language.
+- Verifier: seller, ownership, origin record, price, replica language, and the shop's history (completed sales and
+  age) as seller risk.
 - Buyer agent (`POST /api/agent/shop`) on Muse Spark (Meta Model API), with Groq as a fallback and the scripted
   engine as the last resort. The model picks the tool calls; code verifies every offer and caps each recommendation
   with the guardrail. `npm run agent:live` runs one real model against a local chain.
@@ -39,7 +40,10 @@ Work in progress, devnet only.
 - Shop domain verification by DNS TXT record (`_vcx.<domain>` → `vcx-verify=<shop wallet>`).
 - Sign In With Solana for `/merchant`. Shops keep items in their own wallet, which signs each list and delist;
   the service-held wallet is a devnet demo option only.
-- Resale: a buyer can list an item they hold from `/merchant`, as an own-wallet shop of their own.
+- Resale: a buyer can list an item they hold from `/merchant`, as an own-wallet shop of their own. One shop per
+  wallet; naming a shop later takes over the resale shop.
+- Every agent run is saved: a shareable page per run (`/runs/:id`) and a list (`/runs`).
+- A local demo on an in-process Solana VM (`npm run demo:local`), and a browser test on it (`npm run e2e`).
 - Devnet setup and an end-to-end devnet purchase script. The first run, on 2026-10-29, was
   [this purchase](https://explorer.solana.com/tx/4uYM5ztLWhEtbFeSygss3LUmG7yqkKD5zzjdBG5gg5KdvzLfVtGkiTtyMQ6ctZj6oF75dJiytwZ9LRMtcs2H9Edq?cluster=devnet):
   129 USDC split 127.71 to the merchant and 1.29 to the treasury, with the NFT moving to the buyer, in one transaction.
@@ -68,6 +72,11 @@ git config core.hooksPath .githooks
 
 Devnet: `npm run devnet:setup` creates the service keys, a test USDC mint and `.env.local`. Fund the fee
 payer it prints at https://faucet.solana.com. Then `npm run devnet:e2e` runs one real purchase.
+
+To try the whole app with nothing to set up: `npm run demo:local`, then open http://localhost:3200. It runs on
+LiteSVM with an in-memory database, seeded with the demo shops, and resets on restart. Without a model key the agent
+uses the scripted engine. `npm run e2e` runs the Playwright test on it: a test wallet in the page buys the real tote
+(the copy is flagged), signs in with Solana, resells it, and lists a new item.
 
 To try the web app on devnet: `npm run devnet:seed` mints three demo shops' items, then `MERCHANT_DEMO=1 npm run dev`.
 Phone wallets need the app on a public URL (set `APP_URL` to your tunnel). Without a phone,

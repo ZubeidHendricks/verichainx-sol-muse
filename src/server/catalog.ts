@@ -37,7 +37,25 @@ function sealedSigner(app: App, sealed: string | null, what: string): Signer {
  * Onboards a merchant (§5.1). Without their own wallet they get a vault key of their own (devnet
  * only), never a shared one, so on-chain ownership still tells merchants apart.
  */
+/** Name of the shop resale opens for a buyer's wallet; naming a shop later takes it over. */
+const resaleName = (wallet: string) => `Resale · ${wallet.slice(0, 4)}…${wallet.slice(-4)}`;
+
+/**
+ * One shop per wallet: the ownership check finds the shop that holds an NFT by its wallet. A wallet that so far
+ * only resells takes on the new name and domain instead of getting a second shop.
+ */
 export async function createMerchant(app: App, m: { name: string; domain?: string; wallet?: string; ownerWallet?: string }): Promise<Merchant> {
+  if (m.wallet) {
+    const [existing] = await app.db.select().from(merchants).where(eq(merchants.wallet, m.wallet));
+    if (existing && existing.name !== resaleName(m.wallet)) {
+      throw new Refused(`This wallet already runs ${existing.name}. Each shop needs its own wallet.`);
+    }
+    if (existing) {
+      const [row] = await app.db.update(merchants).set({ name: m.name, domain: m.domain?.toLowerCase() ?? null, domainVerifiedAt: null })
+        .where(eq(merchants.id, existing.id)).returning();
+      return row;
+    }
+  }
   const agent = generateSigner(app.umi);
   const vault = m.wallet ? null : generateSigner(app.umi);
   if (vault && app.config.cluster === "mainnet") throw new Refused("vault custody is devnet-only");
@@ -240,7 +258,7 @@ export async function startResale(app: App, itemId: string, wallet: string, pric
   const asset = await app.chain.getAsset(item.asset!);
   if (!asset || asset.owner !== wallet) throw new Refused("this wallet doesn't hold the item");
   let [shop] = await app.db.select().from(merchants).where(eq(merchants.wallet, wallet));
-  shop ??= await createMerchant(app, { name: `Resale · ${wallet.slice(0, 4)}…${wallet.slice(-4)}`, wallet });
+  shop ??= await createMerchant(app, { name: resaleName(wallet), wallet });
   const [row] = await app.db.update(items).set({ merchantId: shop.id, priceUnits: parseUsdc(price), status: "draft" })
     .where(eq(items.id, itemId)).returning();
   return row;

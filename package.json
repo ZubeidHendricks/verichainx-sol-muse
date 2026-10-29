@@ -17,7 +17,9 @@
     "devnet:e2e": "tsx scripts/devnet-e2e.mts",
     "agent:live": "LIVE_AGENT=1 vitest run tests/live-agent.test.ts",
     "devnet:seed": "tsx scripts/devnet-seed.mts",
-    "demo:wallet": "tsx scripts/demo-wallet.mts"
+    "demo:wallet": "tsx scripts/demo-wallet.mts",
+    "e2e": "playwright test",
+    "demo:local": "NEXT_DIST_DIR=.next-local VCX_LOCAL_CHAIN=1 MERCHANT_DEMO=1 DEMO_COPIER=1 APP_URL=http://localhost:3200 next dev -p 3200"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.13",
@@ -40,6 +42,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@solana/kit": "^8.6.0",
     "@types/node": "^24.19.2",
     "@types/qrcode": "^1.5.6",
