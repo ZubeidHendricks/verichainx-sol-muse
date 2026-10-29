@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   // PGlite loads its WASM build from node_modules at runtime; LiteSVM (local demo only) is a native addon.
   serverExternalPackages: ["@electric-sql/pglite", "litesvm"],
   partialPrefetching: true,
+  // Read from disk at runtime: migrations on first open, and the demo shops' photos for the photo check.
+  outputFileTracingIncludes: { "/**": ["./drizzle/**", "./public/demo/**"] },
 };
 
 export default nextConfig;

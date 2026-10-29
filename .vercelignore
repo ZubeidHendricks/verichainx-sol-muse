@@ -1,0 +1,10 @@
+# Never upload secrets or local state.
+keys/
+.env*
+!.env.example
+.data/
+.next*
+node_modules/
+test-results/
+playwright-report/
+tests/fixtures/*.so

@@ -7,7 +7,7 @@ import { signerFromSecret, makeUmi } from "@/lib/solana/umi";
 
 import { modelsFromEnv, visionModelFromEnv, type ChatModel } from "./agents/llm";
 import { RpcChain, type ChainPort } from "./chain";
-import { openDb, type Db } from "./db";
+import { openDb, openPostgres, type Db } from "./db";
 import { httpImageLoader, type ImageLoader } from "./photos";
 
 /** Service keys (§7.5). The settlement key holds nothing; it is only ever a transfer delegate. */
@@ -62,7 +62,7 @@ async function rpcApp(): Promise<App> {
   const umi = makeUmi(env("SOLANA_RPC_URL"));
   const appUrl = env("APP_URL").replace(/\/$/, "");
   return {
-    db: await openDb(process.env.PGLITE_DIR ?? ".data/pglite"),
+    db: process.env.DATABASE_URL ? await openPostgres(process.env.DATABASE_URL) : await openDb(process.env.PGLITE_DIR ?? ".data/pglite"),
     chain: new RpcChain(umi),
     umi,
     keys: {

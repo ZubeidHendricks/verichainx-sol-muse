@@ -13,7 +13,7 @@ The full spec is in [`docs/SPEC.md`](docs/SPEC.md). Prior work and what came fro
 
 ## Status
 
-Work in progress, devnet only.
+Work in progress, devnet only. Live at https://verichainx-sol.vercel.app.
 
 **Built:**
 - Signed `vcx-agent/1` envelopes.
@@ -95,6 +95,19 @@ Phone wallets need the app on a public URL (set `APP_URL` to your tunnel). Witho
 
 The local database (PGlite, `.data/pglite`) is single-process and locked while in use: stop `npm run dev`
 before running `devnet:seed` or `scripts/db-peek.mts`.
+
+## Deploy
+
+On Vercel with Neon Postgres: the app uses `DATABASE_URL` when it's set (PGlite otherwise). Set the variables from
+`.env.example` on the project (not `MODEL_API_KEY` on a public site: anyone can run the agent), then:
+
+```bash
+DATABASE_URL=<unpooled url> npx tsx scripts/db-migrate.mts
+DATABASE_URL=<unpooled url> APP_URL=https://<your app> npm run devnet:seed
+vercel deploy --prod
+```
+
+`.vercelignore` keeps `keys/`, `.env*` and local data out of the upload.
 
 ## Layout
 

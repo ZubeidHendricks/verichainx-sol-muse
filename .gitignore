@@ -52,3 +52,8 @@ next-env.d.ts
 # playwright
 /test-results/
 /playwright-report/
+
+# Agent skills the Vercel CLI installs
+.agents/
+.claude/skills/
+skills-lock.json
