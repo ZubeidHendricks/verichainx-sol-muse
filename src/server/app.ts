@@ -5,6 +5,7 @@ import type { KeypairSigner, Umi } from "@metaplex-foundation/umi";
 import type { Cluster } from "@/lib/chains";
 import { signerFromSecret, makeUmi } from "@/lib/solana/umi";
 
+import { modelsFromEnv, type ChatModel } from "./agents/llm";
 import { RpcChain, type ChainPort } from "./chain";
 import { openDb, type Db } from "./db";
 
@@ -21,7 +22,11 @@ export type AppConfig = {
   offerTtlMinutes: number;
 };
 
-export type App = { db: Db; chain: ChainPort; umi: Umi; keys: ServiceKeys; config: AppConfig; now: () => Date };
+export type App = {
+  db: Db; chain: ChainPort; umi: Umi; keys: ServiceKeys; config: AppConfig; now: () => Date;
+  /** Models for the buyer agent, tried in order; none means the scripted engine. */
+  agentModels?: ChatModel[];
+};
 
 export function newId(prefix: string): string {
   return `${prefix}_${randomBytes(9).toString("base64url")}`;
@@ -58,6 +63,7 @@ export function getApp(): Promise<App> {
         offerTtlMinutes: 15,
       },
       now: () => new Date(),
+      agentModels: modelsFromEnv(),
     };
   })();
   return app;

@@ -6,7 +6,7 @@ import { TemplateMismatch } from "@/lib/solana/purchase";
 import type { App } from "./app";
 import { NotFound, Refused, checkOffer, loadOffer } from "./catalog";
 import { refreshOrder, startPurchase } from "./pay";
-import { localSource, shop } from "./agents/buyer";
+import { localSource, shopWithModels } from "./agents/buyer";
 import { answerNeed } from "./agents/merchant";
 import { envelopeSchema } from "@/lib/envelope";
 import { hashRecord } from "@/lib/canonical";
@@ -184,12 +184,12 @@ export function wellKnown(app: App): Response {
   });
 }
 
-/** POST /api/agent/shop {message}: the shopper's agent (scripted engine until an LLM key is set). */
+/** POST /api/agent/shop {message}: the shopper's agent on Muse Spark or Groq, or the scripted engine without a key. */
 export async function shopPost(app: App, req: Request): Promise<Response> {
   return guarded(app, async () => {
     const { message } = (await req.json().catch(() => ({}))) as { message?: unknown };
     if (typeof message !== "string" || !message.trim() || message.length > 500) throw new Refused("message is required");
-    return json(app, await shop(app, message.trim(), [localSource(app)]));
+    return json(app, await shopWithModels(app, message.trim(), [localSource(app)], app.agentModels ?? []));
   });
 }
 
