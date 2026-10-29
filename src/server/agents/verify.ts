@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, count, eq, inArray, min } from "drizzle-orm";
 
 import { hashRecord } from "@/lib/canonical";
 import { parseCaip10 } from "@/lib/chains";
@@ -119,6 +119,21 @@ export async function verifyOffer(app: App, env: Envelope): Promise<Verdict> {
   } else {
     add("listing", true, "no replica language");
   }
+
+  // Seller history: how long the shop has been here and what it has sold (§9 seller risk).
+  if (byAgent && !gate) {
+    const h = await sellerHistory(app, byAgent.id);
+    const days = Math.max(0, Math.floor((app.now().getTime() - byAgent.createdAt.getTime()) / 86_400_000));
+    const since = days === 0 ? "joined today" : `joined ${days} day${days === 1 ? "" : "s"} ago`;
+    if (h.sales > 0) {
+      add("history", true, `${h.sales} completed sale${h.sales === 1 ? "" : "s"}; ${since}`);
+    } else {
+      add("history", null, `no completed sales yet; ${since}`);
+      if (days < NEW_SHOP_DAYS) risk += 10;
+    }
+  } else if (!byAgent) {
+    add("history", false, "no sales history here");
+  }
   add("photos", null, "photo comparison not run yet");
 
   const seller_risk = Math.min(100, risk);
@@ -128,6 +143,17 @@ export async function verifyOffer(app: App, env: Envelope): Promise<Verdict> {
     verified_seller: Boolean(byAgent?.domainVerifiedAt) && !gate,
     evidence, reasons: gate ? [gate] : cautions,
   };
+}
+
+const NEW_SHOP_DAYS = 7;
+const SOLD = ["paid", "shipped", "delivered"] as const;
+
+/** Completed sales by a merchant, from paid orders on its offers. */
+export async function sellerHistory(app: App, merchantId: string) {
+  const [row] = await app.db.select({ sales: count(), first: min(schema.orders.createdAt) }).from(schema.orders)
+    .innerJoin(schema.offers, eq(schema.orders.offerId, schema.offers.id))
+    .where(and(eq(schema.offers.merchantId, merchantId), inArray(schema.orders.status, [...SOLD])));
+  return { sales: Number(row?.sales ?? 0), firstSale: row?.first ?? null };
 }
 
 async function holderOf(app: App, wallet: string) {

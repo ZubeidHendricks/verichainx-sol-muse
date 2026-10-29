@@ -73,7 +73,7 @@ describe("buyer and merchant agents", () => {
       "verify_offer", "verify_offer", "verify_offer", "present_recommendations"]);
     const top = out.results[0];
     expect(top.evidence.map((e) => [e.check, e.ok])).toEqual([
-      ["signature", true], ["seller", true], ["ownership", true], ["origin", true], ["listing", true], ["photos", null],
+      ["signature", true], ["seller", true], ["ownership", true], ["origin", true], ["listing", true], ["history", null], ["photos", null],
     ]);
     // The over-budget tote and the shoe shop never made offers; the shoe shop declined.
     const replies = out.trace.find((t) => t.tool === "request_offers")!.output as { type: string }[];

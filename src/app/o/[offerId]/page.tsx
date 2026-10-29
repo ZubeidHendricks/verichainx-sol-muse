@@ -47,6 +47,7 @@ async function Offer({ params }: { params: Promise<{ offerId: string }> }) {
               {VERDICT[verdict.recommendation]}</span>
           </h2>
           <EvidenceList evidence={verdict.evidence} />
+          <p className="small muted">Seller risk {verdict.seller_risk} / 100</p>
           {verdict.reasons.length > 0 && <p className="small muted" style={{ marginBottom: 0 }}>{verdict.reasons.join(" ")}</p>}
         </div>
         {item.asset && <p className="small"><Link href={`/i/${item.asset}`}>See the ownership NFT and its origin record</Link></p>}

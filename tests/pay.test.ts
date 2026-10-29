@@ -14,6 +14,7 @@ import {
 } from "@/server/catalog";
 import { schema } from "@/server/db";
 import { refreshOrder, startPurchase } from "@/server/pay";
+import { verifyOffer } from "@/server/agents/verify";
 
 import { makeTestApp, type TestApp } from "./testApp";
 
@@ -65,6 +66,17 @@ describe("register, offer, pay, confirm", () => {
     expect(app.local.tokenBalance(merchant.wallet, app.config.usdcMint)).toBe(parseUsdc("127.71"));
     expect((await getItem(app, item.id)).status).toBe("sold");
     await expect(startPurchase(app, offer.id, generateSigner(app.umi).publicKey)).rejects.toThrow("item isn't listed");
+
+    // The sale now counts toward the shop's history on its next offer.
+    const next = await listItem(app, (await registerItem(app, merchant.id, { title: "Small Tote", price: "79", photos: PHOTOS })).id);
+    const v = await verifyOffer(app, (await makeOffer(app, next.id)).envelope as Envelope);
+    expect(v.evidence.find((e) => e.check === "history")).toMatchObject({ ok: true, detail: "1 completed sale; joined today" });
+  });
+
+  it("adds seller risk for a new shop with no sales", async () => {
+    const v = await verifyOffer(app, (await makeOffer(app, item.id)).envelope as Envelope);
+    expect(v.evidence.find((e) => e.check === "history")).toMatchObject({ ok: null, detail: "no completed sales yet; joined today" });
+    expect(v.seller_risk).toBe(30); // unverified domain 20, new shop 10
   });
 
   it("ignores a transaction that only mentions the reference", async () => {
