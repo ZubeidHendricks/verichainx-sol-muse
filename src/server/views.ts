@@ -9,7 +9,7 @@ import { attribute } from "@/lib/solana/items";
 
 import { verifyOffer } from "./agents/verify";
 import type { App } from "./app";
-import { NotFound, Refused, checkOffer, loadOffer } from "./catalog";
+import { NotFound, Refused, checkOffer, heldItems, loadOffer, manages } from "./catalog";
 import { schema } from "./db";
 import { refreshOrder } from "./pay";
 
@@ -104,16 +104,19 @@ export async function orderPage(app: App, orderId: string) {
   };
 }
 
-/** /merchant: every merchant with their items. */
-export async function merchantBoard(app: App) {
-  const ms = await app.db.select().from(schema.merchants).orderBy(desc(schema.merchants.createdAt));
+/** /merchant: the shops this wallet manages (plus open demo shops), and items it can resell. */
+export async function merchantBoard(app: App, wallet: string | null) {
+  const ms = (await app.db.select().from(schema.merchants).orderBy(desc(schema.merchants.createdAt)))
+    .filter((m) => manages(m, wallet));
   const its = await app.db.select().from(schema.items).orderBy(desc(schema.items.createdAt));
-  return ms.map((m) => ({
-    id: m.id, name: m.name, domain: m.domain, verified: Boolean(m.domainVerifiedAt), wallet: m.wallet,
-    walletLink: explorerAddress(app, m.wallet),
-    items: its.filter((i) => i.merchantId === m.id).map((i) => ({
-      id: i.id, title: i.title, price: formatUsdc(i.priceUnits), status: i.status, asset: i.asset,
+  return {
+    shops: ms.map((m) => ({
+      id: m.id, name: m.name, domain: m.domain, verified: Boolean(m.domainVerifiedAt), wallet: m.wallet,
+      custody: m.custody, walletLink: explorerAddress(app, m.wallet),
+      items: its.filter((i) => i.merchantId === m.id).map((i) => ({
+        id: i.id, title: i.title, price: formatUsdc(i.priceUnits), status: i.status, asset: i.asset,
+      })),
     })),
-  }));
+    held: wallet ? (await heldItems(app, wallet)).map((i) => ({ id: i.id, title: i.title, asset: i.asset, paid: formatUsdc(i.priceUnits) })) : [],
+  };
 }
-

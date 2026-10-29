@@ -1,5 +1,6 @@
-import { createSignerFromKeypair, generateSigner, type Signer } from "@metaplex-foundation/umi";
-import { eq } from "drizzle-orm";
+import { createNoopSigner, createSignerFromKeypair, generateSigner, publicKey, signTransaction, type Signer } from "@metaplex-foundation/umi";
+import type { AssetV1 } from "@metaplex-foundation/mpl-core";
+import { and, eq } from "drizzle-orm";
 
 import { hashRecord } from "@/lib/canonical";
 import { caip10, solanaChain } from "@/lib/chains";
@@ -36,7 +37,7 @@ function sealedSigner(app: App, sealed: string | null, what: string): Signer {
  * Onboards a merchant (§5.1). Without their own wallet they get a vault key of their own (devnet
  * only), never a shared one, so on-chain ownership still tells merchants apart.
  */
-export async function createMerchant(app: App, m: { name: string; domain?: string; wallet?: string }): Promise<Merchant> {
+export async function createMerchant(app: App, m: { name: string; domain?: string; wallet?: string; ownerWallet?: string }): Promise<Merchant> {
   const agent = generateSigner(app.umi);
   const vault = m.wallet ? null : generateSigner(app.umi);
   if (vault && app.config.cluster === "mainnet") throw new Refused("vault custody is devnet-only");
@@ -49,6 +50,7 @@ export async function createMerchant(app: App, m: { name: string; domain?: strin
     vaultSecretSealed: vault ? seal(vault.secretKey, app.config.sealSecret) : null,
     agentPubkey: agent.publicKey,
     agentSecretSealed: seal(agent.secretKey, app.config.sealSecret),
+    ownerWallet: m.ownerWallet ?? m.wallet ?? null,
   }).returning();
   return row;
 }
@@ -151,7 +153,7 @@ export async function listItem(app: App, itemId: string): Promise<Item> {
   const asset = await app.chain.getAsset(item.asset!);
   if (!asset || asset.owner !== m.wallet) throw new Refused("the merchant no longer holds this item");
   await app.chain.send(buildListItem(app.umi, {
-    asset, collection: m.collectionAsset ?? undefined, owner, settlement: app.keys.settlement.publicKey,
+    asset, collection: assetCollection(asset), owner, settlement: app.keys.settlement.publicKey,
     payer: app.keys.feePayer,
   }).setFeePayer(app.keys.feePayer));
   const [row] = await app.db.update(items).set({ status: "listed" }).where(eq(items.id, itemId)).returning();
@@ -166,6 +168,81 @@ export async function delistItem(app: App, itemId: string): Promise<Item> {
     owner: sealedSigner(app, m.vaultSecretSealed, "vault"), payer: app.keys.feePayer,
   }).setFeePayer(app.keys.feePayer));
   const [row] = await app.db.update(items).set({ status: "delisted" }).where(eq(items.id, itemId)).returning();
+  return row;
+}
+
+/** The collection an asset belongs to, read from the asset: a resold item stays in its maker's collection. */
+export function assetCollection(asset: Pick<AssetV1, "updateAuthority">): string | undefined {
+  return asset.updateAuthority.type === "Collection" ? asset.updateAuthority.address : undefined;
+}
+
+/** Whether a signed-in wallet may manage this shop. Demo vault shops with no owner are open when MERCHANT_DEMO=1. */
+export function manages(m: Merchant, wallet: string | null, demo = process.env.MERCHANT_DEMO === "1"): boolean {
+  return m.ownerWallet ? m.ownerWallet === wallet : demo;
+}
+
+/**
+ * Own-wallet shops (§7.5): the list or delist transaction, built and signed here by the fee payer,
+ * for the shop's wallet to sign in the browser. Only the asset's owner can approve the delegate.
+ */
+export async function prepareOwnerTx(app: App, itemId: string, action: "list" | "delist", wallet: string): Promise<string> {
+  const item = await getItem(app, itemId);
+  const m = await getMerchant(app, item.merchantId);
+  if (m.custody !== "own_wallet" || m.wallet !== wallet) throw new Refused("only the shop's own wallet can do this");
+  const asset = await app.chain.getAsset(item.asset!);
+  if (!asset || asset.owner !== wallet) throw new Refused("this wallet no longer holds the item");
+  const owner = createNoopSigner(publicKey(wallet));
+  const { feePayer, settlement } = app.keys;
+  const builder = action === "list"
+    ? buildListItem(app.umi, { asset, collection: assetCollection(asset), owner, settlement: settlement.publicKey, payer: feePayer })
+    : buildDelistItem(app.umi, { asset: asset.publicKey, collection: assetCollection(asset), owner, payer: feePayer });
+  const b = builder.setFeePayer(feePayer).setBlockhash(await app.chain.latestBlockhash());
+  const tx = await signTransaction(b.build(app.umi), [feePayer]);
+  return Buffer.from(app.umi.transactions.serialize(tx)).toString("base64");
+}
+
+/** Reads the item's listing state from the chain, after the shop's wallet sent a list or delist. */
+export async function syncItem(app: App, itemId: string): Promise<Item> {
+  const item = await getItem(app, itemId);
+  const m = await getMerchant(app, item.merchantId);
+  const asset = await app.chain.getAsset(item.asset!);
+  const d = asset?.transferDelegate?.authority;
+  const listed = asset?.owner === m.wallet && d?.type === "Address" && d.address === app.keys.settlement.publicKey;
+  const status = listed ? "listed" : item.status === "listed" ? "delisted" : item.status;
+  if (status === item.status) return item;
+  const [row] = await app.db.update(items).set({ status }).where(eq(items.id, itemId)).returning();
+  return row;
+}
+
+/** Items a wallet bought here and still holds: what it can resell (§5 story 7). */
+export async function heldItems(app: App, wallet: string): Promise<Item[]> {
+  const rows = await app.db.select({ item: items, merchant: merchants }).from(schema.orders)
+    .innerJoin(offers, eq(schema.orders.offerId, offers.id))
+    .innerJoin(items, eq(offers.itemId, items.id))
+    .innerJoin(merchants, eq(items.merchantId, merchants.id))
+    .where(and(eq(schema.orders.buyerWallet, wallet), eq(schema.orders.status, "paid")));
+  const out = new Map<string, Item>();
+  for (const { item, merchant } of rows) {
+    if (merchant.wallet === wallet) continue; // already moved into this wallet's own shop
+    const asset = await app.chain.getAsset(item.asset!);
+    if (asset?.owner === wallet) out.set(item.id, item);
+  }
+  return [...out.values()];
+}
+
+/**
+ * Resale: the holder's wallet gets an own-wallet shop (made on first resale) and the item moves into
+ * it at the new price, as a draft. Listing it is then signed by the holder like any own-wallet item.
+ * The origin record stays the maker's: it's on the NFT.
+ */
+export async function startResale(app: App, itemId: string, wallet: string, price: string): Promise<Item> {
+  const item = await getItem(app, itemId);
+  const asset = await app.chain.getAsset(item.asset!);
+  if (!asset || asset.owner !== wallet) throw new Refused("this wallet doesn't hold the item");
+  let [shop] = await app.db.select().from(merchants).where(eq(merchants.wallet, wallet));
+  shop ??= await createMerchant(app, { name: `Resale · ${wallet.slice(0, 4)}…${wallet.slice(-4)}`, wallet });
+  const [row] = await app.db.update(items).set({ merchantId: shop.id, priceUnits: parseUsdc(price), status: "draft" })
+    .where(eq(items.id, itemId)).returning();
   return row;
 }
 

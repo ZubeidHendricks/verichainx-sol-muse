@@ -14,6 +14,8 @@ export const merchants = pgTable("merchants", {
   agentSecretSealed: text("agent_secret_sealed"), // service-held agent key, sealed with KEY_SEAL_SECRET
   collectionAsset: text("collection_asset"),
   shopifyShop: text("shopify_shop"),
+  // The wallet that signed in and manages this shop (§11.4). For own-wallet shops it equals `wallet`.
+  ownerWallet: text("owner_wallet"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

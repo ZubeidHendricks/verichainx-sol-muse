@@ -6,7 +6,7 @@ import { formatUsdc } from "@/lib/money";
 import { orderMemo, preparePurchase, type PurchaseTerms } from "@/lib/solana/purchase";
 
 import { newId, type App } from "./app";
-import { NotFound, Refused, checkOffer, loadOffer } from "./catalog";
+import { NotFound, Refused, assetCollection, checkOffer, loadOffer } from "./catalog";
 import { schema } from "./db";
 
 const { orders, items } = schema;
@@ -20,9 +20,10 @@ function isAddress(s: unknown): s is string {
   }
 }
 
-function terms(app: App, o: Order, ctx: Awaited<ReturnType<typeof loadOffer>>): PurchaseTerms {
+/** `collection` comes from the asset itself: a resold item stays in its maker's collection. */
+function terms(app: App, o: Order, ctx: Awaited<ReturnType<typeof loadOffer>>, collection?: string): PurchaseTerms {
   return {
-    orderId: o.id, asset: ctx.item.asset!, collection: ctx.merchant.collectionAsset ?? undefined,
+    orderId: o.id, asset: ctx.item.asset!, collection,
     merchant: ctx.merchant.wallet, buyer: o.buyerWallet, usdcMint: app.config.usdcMint, treasury: app.config.treasury,
     price: ctx.offer.priceUnits, feeBps: o.feeBps, reference: o.reference, orderHash: o.orderHash,
   };
@@ -53,7 +54,7 @@ export async function startPurchase(app: App, offerId: string, account: unknown)
     }).returning();
   }
 
-  const { transaction } = await preparePurchase(app.umi, terms(app, order, ctx), app.keys.feePayer, app.keys.settlement,
+  const { transaction } = await preparePurchase(app.umi, terms(app, order, ctx, assetCollection(current)), app.keys.feePayer, app.keys.settlement,
     await app.chain.latestBlockhash(), current);
   const seller = ctx.merchant.domain ?? ctx.merchant.name;
   return {

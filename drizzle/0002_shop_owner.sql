@@ -1,0 +1,1 @@
+ALTER TABLE "merchants" ADD COLUMN "owner_wallet" text;

@@ -37,13 +37,15 @@ Work in progress, devnet only.
 - Buy in the app with a browser wallet (Wallet Standard: Phantom, Solflare, Backpack), next to the Solana Pay QR.
 - Other apps' agents as offer sources (`AGENT_PEERS`), and a demo copier agent (`DEMO_COPIER=1`) for the copy check.
 - Shop domain verification by DNS TXT record (`_vcx.<domain>` → `vcx-verify=<shop wallet>`).
+- Sign In With Solana for `/merchant`. Shops keep items in their own wallet, which signs each list and delist;
+  the service-held wallet is a devnet demo option only.
+- Resale: a buyer can list an item they hold from `/merchant`, as an own-wallet shop of their own.
 - Devnet setup and an end-to-end devnet purchase script. The first run, on 2026-10-29, was
   [this purchase](https://explorer.solana.com/tx/4uYM5ztLWhEtbFeSygss3LUmG7yqkKD5zzjdBG5gg5KdvzLfVtGkiTtyMQ6ctZj6oF75dJiytwZ9LRMtcs2H9Edq?cluster=devnet):
   129 USDC split 127.71 to the merchant and 1.29 to the treasury, with the NFT moving to the buyer, in one transaction.
 
 **Next:**
 - AI photo comparison.
-- Sign In With Solana for shops, and shops bringing their own wallet.
 - Shopify.
 
 ## Develop

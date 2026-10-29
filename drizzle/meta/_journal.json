@@ -15,6 +15,13 @@
       "when": 1793222224795,
       "tag": "0001_merchant_vaults",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793268179378,
+      "tag": "0002_shop_owner",
+      "breakpoints": true
     }
   ]
 }

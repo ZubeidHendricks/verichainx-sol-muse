@@ -7,6 +7,7 @@ import type { App } from "./app";
 import { NotFound, Refused, checkOffer, loadOffer } from "./catalog";
 import { refreshOrder, startPurchase } from "./pay";
 import { assetReport, offerStatus } from "./views";
+import { CHALLENGE_COOKIE, SESSION_COOKIE, completeSignIn, readCookie, setCookie, signInChallenge } from "./auth";
 import { offers } from "./db/schema";
 import { inArray } from "drizzle-orm";
 import { localSource, peerSources, shopWithModels } from "./agents/buyer";
@@ -208,4 +209,29 @@ export async function verifyAssetGet(app: App, assetId: string): Promise<Respons
 /** GET /api/offers/:offer/status: the newest order on an offer, refreshed from the chain. */
 export async function offerStatusGet(app: App, offerId: string): Promise<Response> {
   return guarded(app, async () => json(app, await offerStatus(app, offerId)));
+}
+
+/** GET /api/auth/siws: a Sign In With Solana challenge for this host. */
+export function siwsGet(app: App, req: Request): Response {
+  const { input, cookie } = signInChallenge(app, new URL(req.url).host);
+  return Response.json({ input }, { headers: { "set-cookie": setCookie(app, CHALLENGE_COOKIE, cookie, 600) } });
+}
+
+/** POST /api/auth/siws {address, signedMessage, signature}: checks the signature and starts a session. */
+export async function siwsPost(app: App, req: Request): Promise<Response> {
+  return guarded(app, async () => {
+    const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    if (![b.address, b.signedMessage, b.signature].every((v) => typeof v === "string")) throw new Refused("missing sign-in fields");
+    const { address, cookie } = completeSignIn(app, readCookie(req, CHALLENGE_COOKIE),
+      b as { address: string; signedMessage: string; signature: string });
+    const headers = new Headers();
+    headers.append("set-cookie", setCookie(app, SESSION_COOKIE, cookie, 12 * 3600));
+    headers.append("set-cookie", setCookie(app, CHALLENGE_COOKIE, "", 0));
+    return Response.json({ address }, { headers });
+  });
+}
+
+/** POST /api/auth/logout */
+export function logoutPost(app: App): Response {
+  return Response.json({ ok: true }, { headers: { "set-cookie": setCookie(app, SESSION_COOKIE, "", 0) } });
 }
