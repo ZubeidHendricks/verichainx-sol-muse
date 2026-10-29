@@ -30,18 +30,17 @@ function sealedSecret(app: App, sealed: string | null, what: string): Uint8Array
   return unseal(sealed, app.config.sealSecret);
 }
 
-function sealedSigner(app: App, sealed: string | null, what: string): Signer {
+export function sealedSigner(app: App, sealed: string | null, what: string): Signer {
   return keypairSigner(app, sealedSecret(app, sealed, what));
 }
 
-/**
- * Onboards a merchant (§5.1). Without their own wallet they get a vault key of their own (devnet
- * only), never a shared one, so on-chain ownership still tells merchants apart.
- */
 /** Name of the shop resale opens for a buyer's wallet; naming a shop later takes it over. */
 const resaleName = (wallet: string) => `Resale · ${wallet.slice(0, 4)}…${wallet.slice(-4)}`;
 
 /**
+ * Onboards a merchant (§5.1). Without their own wallet they get a vault key of their own (devnet
+ * only), never a shared one, so on-chain ownership still tells merchants apart.
+ *
  * One shop per wallet: the ownership check finds the shop that holds an NFT by its wallet. A wallet that so far
  * only resells takes on the new name and domain instead of getting a second shop.
  */

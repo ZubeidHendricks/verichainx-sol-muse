@@ -18,14 +18,15 @@ const CHALLENGE_MINUTES = 10;
 const SESSION_HOURS = 12;
 
 const key = (app: App) => createHmac("sha256", app.config.sealSecret).update("vcx-session-v1").digest();
-const mac = (app: App, data: string) => createHmac("sha256", key(app)).update(data).digest("base64url");
+export const mac = (app: App, data: string) => createHmac("sha256", key(app)).update(data).digest("base64url");
 
-function seal(app: App, payload: object): string {
+/** A value only this server can have made: JSON, base64url, with an HMAC tag. Not encrypted. */
+export function seal(app: App, payload: object): string {
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${body}.${mac(app, body)}`;
 }
 
-function open<T>(app: App, token: string | undefined): T | null {
+export function open<T>(app: App, token: string | undefined): T | null {
   if (!token) return null;
   const [body, tag] = token.split(".");
   if (!body || !tag) return null;

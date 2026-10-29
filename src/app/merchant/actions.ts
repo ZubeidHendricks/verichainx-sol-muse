@@ -9,6 +9,7 @@ import {
   Refused, createMerchant, delistItem, getItem, getMerchant, listItem, manages, prepareOwnerTx, registerItem,
   startResale, syncItem, verifyDomain,
 } from "@/server/catalog";
+import { importProducts, shopifyConfig } from "@/server/shopify";
 
 export type ActionState = { error?: string; done?: string; transaction?: string };
 
@@ -95,6 +96,16 @@ export async function resell(itemId: string, _: ActionState, fd: FormData): Prom
     const wallet = await session(app);
     await startResale(app, itemId, wallet, price);
     return { transaction: await prepareOwnerTx(app, itemId, "list", wallet) };
+  });
+}
+
+export async function importShopify(merchantId: string): Promise<ActionState> {
+  return run(async (app) => {
+    const { m } = await managedShop(app, merchantId);
+    const cfg = shopifyConfig();
+    if (!cfg || !m.shopifyShop) throw new Refused("This shop isn't connected to Shopify.");
+    const added = await importProducts(app, cfg, m);
+    return { done: added.length ? `Registered ${added.join(", ")}.` : "No new products." };
   });
 }
 

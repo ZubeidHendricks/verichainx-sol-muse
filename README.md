@@ -46,6 +46,11 @@ Work in progress, devnet only.
   the service-held wallet is a devnet demo option only.
 - Resale: a buyer can list an item they hold from `/merchant`, as an own-wallet shop of their own. One shop per
   wallet; naming a shop later takes over the resale shop.
+- Shopify partner stores (§11.3): a signed-in shop connects its store by OAuth (GraphQL Admin API), its products are
+  registered at origin with their photos, and each `orders/paid` webhook (HMAC-checked) creates a claim link. The
+  buyer gives the order's email and a wallet, and the NFT moves to them once; five wrong emails lock the claim.
+  Needs `SHOPIFY_API_KEY`/`SHOPIFY_API_SECRET` from a Shopify app with protected customer data access for orders.
+  The local demo fakes a paid order (`POST /api/local/shopify-order`) to show the claim page.
 - Every agent run is saved: a shareable page per run (`/runs/:id`) and a list (`/runs`).
 - A local demo on an in-process Solana VM (`npm run demo:local`), and a browser test on it (`npm run e2e`).
 - Devnet setup and an end-to-end devnet purchase script. The first run, on 2026-10-29, was
@@ -53,7 +58,8 @@ Work in progress, devnet only.
   129 USDC split 127.71 to the merchant and 1.29 to the treasury, with the NFT moving to the buyer, in one transaction.
 
 **Next:**
-- Shopify.
+- Agent-to-agent shopping: a seller's representative agent greets and sells to the shopper, with the shopper's
+  agent verifying each claim.
 
 ## Develop
 

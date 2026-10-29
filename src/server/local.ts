@@ -7,10 +7,13 @@ import { parseUsdc } from "@/lib/money";
 
 import type { App } from "./app";
 import { Refused } from "./catalog";
-import { openDb } from "./db";
+import { and, eq } from "drizzle-orm";
+
+import { openDb, schema } from "./db";
 import { seedDemoShops } from "./demo-shops";
 import { LocalChain, SvmChainPort } from "./local-chain";
 import { httpImageLoader } from "./photos";
+import { ordersPaid } from "./shopify";
 
 /**
  * The local demo (`VCX_LOCAL_CHAIN=1`): the whole app on an in-process Solana VM and an in-memory database,
@@ -67,4 +70,22 @@ export function submitSigned(app: App, base64: string): string {
     throw new Refused((e as Error).message.split("\n")[0]);
   }
   return bs58.encode(tx.signatures[0]);
+}
+
+/**
+ * A paid Shopify order, as the orders/paid webhook would deliver it, for a demo shop's basket: shows the claim
+ * flow without a real store. Returns the claim link the shop would send the buyer.
+ */
+export async function demoShopifyOrder(app: App, email: string) {
+  asLocal(app);
+  const shop = "lerato-bags-demo.myshopify.com";
+  const [m] = await app.db.select().from(schema.merchants).where(eq(schema.merchants.domain, "lerato-bags.example"));
+  const [item] = await app.db.select().from(schema.items)
+    .where(and(eq(schema.items.merchantId, m.id), eq(schema.items.title, "Everyday Woven Basket")));
+  await app.db.update(schema.merchants).set({ shopifyShop: shop }).where(eq(schema.merchants.id, m.id));
+  await app.db.update(schema.items).set({ shopifyProductId: "8002" }).where(eq(schema.items.id, item.id));
+  const n = 1000 + Math.floor(Math.random() * 9000);
+  const [claim] = await ordersPaid(app, shop, { id: n, name: `#${n}`, email, line_items: [{ product_id: 8002, quantity: 1 }] });
+  if (!claim) throw new Refused("the demo basket has been claimed or sold already");
+  return claim.url;
 }

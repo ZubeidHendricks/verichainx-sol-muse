@@ -76,4 +76,22 @@ test.describe.serial("shopper and seller on the local chain", () => {
     await row.getByRole("button", { name: "List" }).click();
     await expect(row.locator(".pill")).toHaveText("listed");
   });
+
+  test("a Shopify buyer claims the item's NFT with the order's email", async () => {
+    const r = await page.request.post("/api/local/shopify-order", { data: { email: "thandi@example.com" } });
+    const { claim_url: url } = await r.json();
+    await page.goto(url);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Everyday Woven Basket");
+    await page.getByLabel("Email you ordered with").fill("someone@else.com");
+    await page.getByRole("button", { name: "Use Test Wallet" }).click();
+    await expect(page.getByLabel("Your Solana wallet address")).not.toHaveValue("");
+    await page.getByRole("button", { name: "Claim the NFT" }).click();
+    await expect(page.locator(".notice.error")).toHaveText("That isn't the email on the order.");
+
+    await page.getByLabel("Email you ordered with").fill("thandi@example.com");
+    await page.getByRole("button", { name: "Claim the NFT" }).click();
+    await expect(page.getByText(/^Claimed\. The NFT is in wallet/)).toBeVisible();
+    await page.getByRole("link", { name: "Check the NFT" }).click();
+    await expect(page.getByText("Everyday Woven Basket").first()).toBeVisible();
+  });
 });

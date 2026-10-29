@@ -7,7 +7,8 @@ import type { App } from "./app";
 import { NotFound, Refused, checkOffer, loadOffer } from "./catalog";
 import { refreshOrder, startPurchase } from "./pay";
 import { assetReport, offerStatus, saveRun } from "./views";
-import { CHALLENGE_COOKIE, SESSION_COOKIE, completeSignIn, readCookie, setCookie, signInChallenge } from "./auth";
+import { CHALLENGE_COOKIE, SESSION_COOKIE, completeSignIn, readCookie, sessionAddress, setCookie, signInChallenge } from "./auth";
+import { STATE_COOKIE as SHOPIFY_STATE, completeInstall, installRedirect, ordersPaid, shopifyConfig, verifyWebhookHmac } from "./shopify";
 import { offers } from "./db/schema";
 import { inArray } from "drizzle-orm";
 import { localSource, peerSources, shopWithModels } from "./agents/buyer";
@@ -238,12 +239,15 @@ export function logoutPost(app: App): Response {
   return Response.json({ ok: true }, { headers: { "set-cookie": setCookie(app, SESSION_COOKIE, "", 0) } });
 }
 
-/** POST /api/local/{fund,send}: the local demo's stand-ins for a faucet and an RPC node. 404 anywhere else. */
+/**
+ * POST /api/local/{fund,send,shopify-order}: the local demo's stand-ins for a faucet, an RPC node and a Shopify
+ * store. 404 anywhere else.
+ */
 export async function localPost(app: App, req: Request, action: string): Promise<Response> {
   return guarded(app, async () => {
     if (process.env.VCX_LOCAL_CHAIN !== "1") throw new NotFound("not found");
     const local = await import("./local");
-    const body = (await req.json().catch(() => ({}))) as { address?: unknown; transaction?: unknown };
+    const body = (await req.json().catch(() => ({}))) as { address?: unknown; transaction?: unknown; email?: unknown };
     if (action === "fund" && typeof body.address === "string") {
       await local.fundWallet(app, body.address);
       return json(app, { funded: body.address });
@@ -251,6 +255,50 @@ export async function localPost(app: App, req: Request, action: string): Promise
     if (action === "send" && typeof body.transaction === "string") {
       return json(app, { signature: local.submitSigned(app, body.transaction) });
     }
+    if (action === "shopify-order" && typeof body.email === "string") {
+      return json(app, { claim_url: await local.demoShopifyOrder(app, body.email) });
+    }
     throw new NotFound("not found");
   });
+}
+
+/** GET /api/shopify/install?shop=…: a signed-in shop goes to Shopify to approve the app. */
+export async function shopifyInstallGet(app: App, req: Request): Promise<Response> {
+  return guarded(app, async () => {
+    const cfg = shopifyConfig();
+    if (!cfg) throw new NotFound("Shopify isn't set up on this server.");
+    const wallet = sessionAddress(app, readCookie(req, SESSION_COOKIE));
+    if (!wallet) return Response.redirect(`${app.config.appUrl}/merchant?shopify=sign-in`, 303);
+    const { url, cookie } = installRedirect(app, cfg, new URL(req.url).searchParams.get("shop") ?? "", wallet);
+    return new Response(null, { status: 303, headers: { location: url, "set-cookie": setCookie(app, SHOPIFY_STATE, cookie, 600) } });
+  });
+}
+
+/** GET /api/shopify/callback: Shopify sends the shop back here after approving. */
+export async function shopifyCallbackGet(app: App, req: Request): Promise<Response> {
+  const cfg = shopifyConfig();
+  if (!cfg) return json(app, { message: "Shopify isn't set up on this server." }, 404);
+  const back = (q: string) => new Response(null, { status: 303, headers: {
+    location: `${app.config.appUrl}/merchant?${q}`, "set-cookie": setCookie(app, SHOPIFY_STATE, "", 0) } });
+  try {
+    const { imported } = await completeInstall(app, cfg, new URL(req.url).searchParams, readCookie(req, SHOPIFY_STATE));
+    return back(`shopify=connected&imported=${imported.length}`);
+  } catch (e) {
+    if (!(e instanceof Refused)) console.error(e);
+    return back(`shopify=failed&reason=${encodeURIComponent(e instanceof Refused ? e.message : "Shopify didn't answer. Try again.")}`);
+  }
+}
+
+/** POST /api/shopify/webhooks/orders-paid: HMAC over the raw body, then a claim per registered item. */
+export async function ordersPaidPost(app: App, req: Request): Promise<Response> {
+  const cfg = shopifyConfig();
+  if (!cfg) return new Response(null, { status: 404 });
+  const raw = await req.text();
+  if (!verifyWebhookHmac(raw, req.headers.get("x-shopify-hmac-sha256"), cfg.apiSecret)) return new Response(null, { status: 401 });
+  try {
+    await ordersPaid(app, req.headers.get("x-shopify-shop-domain") ?? "", JSON.parse(raw));
+  } catch (e) {
+    if (!(e instanceof Refused)) throw e; // a 5xx makes Shopify retry; an unknown store won't get better
+  }
+  return new Response(null, { status: 200 });
 }

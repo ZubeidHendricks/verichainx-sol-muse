@@ -13,6 +13,7 @@ import { newId, type App } from "./app";
 import { NotFound, Refused, checkOffer, heldItems, loadOffer, manages } from "./catalog";
 import { schema } from "./db";
 import { refreshOrder } from "./pay";
+import { shopClaims } from "./shopify";
 
 /** Read models for the web pages. Route handlers and pages share these, so both say the same thing. */
 
@@ -111,13 +112,14 @@ export async function merchantBoard(app: App, wallet: string | null) {
     .filter((m) => manages(m, wallet));
   const its = await app.db.select().from(schema.items).orderBy(desc(schema.items.createdAt));
   return {
-    shops: ms.map((m) => ({
+    shops: await Promise.all(ms.map(async (m) => ({
       id: m.id, name: m.name, domain: m.domain, verified: Boolean(m.domainVerifiedAt), wallet: m.wallet,
-      custody: m.custody, walletLink: explorerAddress(app, m.wallet),
+      custody: m.custody, walletLink: explorerAddress(app, m.wallet), shopify: m.shopifyShop,
       items: its.filter((i) => i.merchantId === m.id).map((i) => ({
         id: i.id, title: i.title, price: formatUsdc(i.priceUnits), status: i.status, asset: i.asset,
       })),
-    })),
+      claims: m.shopifyShop ? await shopClaims(app, m.id) : [],
+    }))),
     held: wallet ? (await heldItems(app, wallet)).map((i) => ({ id: i.id, title: i.title, asset: i.asset, paid: formatUsdc(i.priceUnits) })) : [],
   };
 }
