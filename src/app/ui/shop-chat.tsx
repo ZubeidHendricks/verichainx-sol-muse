@@ -2,22 +2,13 @@
 
 import { useState } from "react";
 
-import type { ShopResult } from "@/server/agents/buyer";
+import type { ShopReply } from "@/server/views";
 
-import { Tag } from "./tag";
+import { RunView } from "./run-view";
 
-type Result = ShopResult["results"][number] & { local: boolean };
-type Reply = Omit<ShopResult, "results"> & { results: Result[] };
+type Reply = ShopReply & { run_id?: string };
 
 const EXAMPLES = ["An everyday tote under $200", "A leather wallet, max 120 USDC", "Something hand-woven"];
-
-const STEP: Record<string, string> = {
-  discover_merchants: "Found shops",
-  request_offers: "Asked for offers",
-  verify_offer: "Checked an offer",
-  present_recommendations: "Ranked the shortlist",
-  model_error: "Model didn't answer",
-};
 
 export function ShopChat() {
   const [text, setText] = useState("");
@@ -63,53 +54,8 @@ export function ShopChat() {
       <div aria-live="polite">
         {error && <p className="notice error" style={{ marginTop: 32 }}>{error}</p>}
         {busy && !reply && <p className="muted" style={{ marginTop: 32 }}>Asking shops and checking each offer on Solana…</p>}
-        {reply && <Results reply={reply} />}
+        {reply && <RunView reply={reply} runId={reply.run_id} />}
       </div>
     </>
-  );
-}
-
-function Results({ reply }: { reply: Reply }) {
-  const scripted = reply.engine === "scripted";
-  return (
-    <section className="run">
-      <div>
-        <p className="answer">{reply.answer}</p>
-        {scripted && (
-          <p className="notice">No AI model answered, so the built-in rules picked the steps. The checks are the same.</p>
-        )}
-        {reply.results.length === 0 ? (
-          <p className="muted">No shop had a match. Try a broader description or a higher budget.</p>
-        ) : (
-          <div className="tags">
-            {reply.results.map((r, i) => (
-              <Tag key={`${r.offer?.offer_id}-${i}`} index={i} title={r.offer?.title ?? "Unreadable offer"}
-                shop={r.offer?.merchant_domain ?? r.offer?.merchant ?? r.from} price={r.offer?.price ?? "?"}
-                verdict={r.final} reason={r.model_reason ?? r.reasons[0]} evidence={r.evidence}
-                offerId={r.local ? r.offer?.offer_id : undefined} asset={r.offer?.asset} />
-            ))}
-          </div>
-        )}
-      </div>
-      <aside className="log" aria-label="What the agent did">
-        <h2 className="eyebrow">What the agent did</h2>
-        <ol>
-          {reply.trace.map((t, i) => {
-            const byModel = t.by && t.by !== "code";
-            return (
-              <li key={i} className={byModel ? "model" : undefined}>
-                {STEP[t.tool] ?? t.tool}
-                <span className="who">{byModel ? t.by : "code"}</span>
-              </li>
-            );
-          })}
-        </ol>
-        <p className="usage">
-          Engine: {reply.engine}
-          {reply.usage && <><br />{reply.usage.prompt_tokens + reply.usage.completion_tokens} tokens</>}
-        </p>
-        {reply.notes?.map((n) => <p key={n}>{n}</p>)}
-      </aside>
-    </section>
   );
 }

@@ -6,7 +6,7 @@ import { TemplateMismatch } from "@/lib/solana/purchase";
 import type { App } from "./app";
 import { NotFound, Refused, checkOffer, loadOffer } from "./catalog";
 import { refreshOrder, startPurchase } from "./pay";
-import { assetReport, offerStatus } from "./views";
+import { assetReport, offerStatus, saveRun } from "./views";
 import { CHALLENGE_COOKIE, SESSION_COOKIE, completeSignIn, readCookie, setCookie, signInChallenge } from "./auth";
 import { offers } from "./db/schema";
 import { inArray } from "drizzle-orm";
@@ -197,7 +197,9 @@ export async function shopPost(app: App, req: Request): Promise<Response> {
     const ids = out.results.map((r) => r.offer?.offer_id).filter((id): id is string => Boolean(id));
     const here = new Set((ids.length ? await app.db.select({ id: offers.id }).from(offers).where(inArray(offers.id, ids)) : [])
       .map((o) => o.id));
-    return json(app, { ...out, results: out.results.map((r) => ({ ...r, local: here.has(r.offer?.offer_id ?? "") })) });
+    const reply = { ...out, results: out.results.map((r) => ({ ...r, local: here.has(r.offer?.offer_id ?? "") })) };
+    const run_id = await saveRun(app, message.trim(), reply);
+    return json(app, { ...reply, run_id });
   });
 }
 

@@ -22,6 +22,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <nav aria-label="Main">
             <Link href="/">Shop</Link>
             <Link href="/merchant">Sell</Link>
+            <Link href="/runs">Runs</Link>
             <span className="net">Solana devnet</span>
           </nav>
         </header>

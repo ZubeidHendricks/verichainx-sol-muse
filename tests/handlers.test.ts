@@ -7,6 +7,8 @@ import {
   actionGet, actionPost, actionsJson, merchantAgentPost, orderGet, payGet, payPost, shopPost, verifyAssetGet, wellKnown,
 } from "@/server/handlers";
 
+import { recentRuns, runPage } from "@/server/views";
+
 import { makeTestApp, type TestApp } from "./testApp";
 
 const post = (body: unknown) => new Request("https://sol.example.test/x", {
@@ -117,5 +119,12 @@ describe("agent and verify endpoints", () => {
     expect(out.engine).toBe("scripted");
     expect(out.results[0].offer.title).toBe("Woven Market Tote");
     expect((await shopPost(app, post({}))).status).toBe(400);
+
+    // The run is saved and reads back as the shopper saw it.
+    const saved = await runPage(app, out.run_id);
+    expect(saved.message).toBe("everyday tote under $200");
+    expect(saved.reply.results.map((r) => [r.offer?.title, r.final, r.local])).toEqual(
+      out.results.map((r: { offer: { title: string }; final: string; local: boolean }) => [r.offer.title, r.final, r.local]));
+    expect(await recentRuns(app)).toMatchObject([{ id: out.run_id, engine: "scripted", offers: out.results.length }]);
   });
 });

@@ -8,7 +8,8 @@ import { formatUsdc } from "@/lib/money";
 import { attribute } from "@/lib/solana/items";
 
 import { verifyOffer } from "./agents/verify";
-import type { App } from "./app";
+import type { ShopResult } from "./agents/buyer";
+import { newId, type App } from "./app";
 import { NotFound, Refused, checkOffer, heldItems, loadOffer, manages } from "./catalog";
 import { schema } from "./db";
 import { refreshOrder } from "./pay";
@@ -119,4 +120,37 @@ export async function merchantBoard(app: App, wallet: string | null) {
     })),
     held: wallet ? (await heldItems(app, wallet)).map((i) => ({ id: i.id, title: i.title, asset: i.asset, paid: formatUsdc(i.priceUnits) })) : [],
   };
+}
+
+/** What /api/agent/shop returns: the run, with each result marked if this app holds the offer. */
+export type ShopReply = Omit<ShopResult, "results"> & { results: (ShopResult["results"][number] & { local: boolean })[] };
+
+export async function saveRun(app: App, message: string, reply: ShopReply): Promise<string> {
+  const id = newId("run");
+  await app.db.insert(schema.agentRuns).values({ id, message, engine: reply.engine, answer: reply.answer,
+    results: reply.results, trace: reply.trace, usage: reply.usage ?? null, notes: reply.notes ?? [], createdAt: app.now() });
+  return id;
+}
+
+/** /runs/:id: a saved run, as the shopper saw it. */
+export async function runPage(app: App, runId: string) {
+  const [r] = await app.db.select().from(schema.agentRuns).where(eq(schema.agentRuns.id, runId));
+  if (!r) throw new NotFound(`no run ${runId}`);
+  const reply = { need: null, engine: r.engine, answer: r.answer, results: r.results, trace: r.trace,
+    usage: r.usage ?? undefined, notes: r.notes } as unknown as ShopReply;
+  return { id: r.id, message: r.message, createdAt: r.createdAt.toISOString(), reply };
+}
+
+/** /runs: recent runs, newest first. */
+export async function recentRuns(app: App, limit = 30) {
+  const rows = await app.db.select({ id: schema.agentRuns.id, message: schema.agentRuns.message, engine: schema.agentRuns.engine,
+    results: schema.agentRuns.results, usage: schema.agentRuns.usage, createdAt: schema.agentRuns.createdAt })
+    .from(schema.agentRuns).orderBy(desc(schema.agentRuns.createdAt)).limit(limit);
+  return rows.map((r) => {
+    const results = r.results as ShopReply["results"];
+    const u = r.usage as { prompt_tokens: number; completion_tokens: number } | null;
+    return { id: r.id, message: r.message, engine: r.engine, createdAt: r.createdAt.toISOString(),
+      offers: results.length, avoided: results.filter((x) => x.final === "avoid" || x.final === "excluded").length,
+      tokens: u ? u.prompt_tokens + u.completion_tokens : null };
+  });
 }

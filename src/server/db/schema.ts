@@ -66,3 +66,16 @@ export const records = pgTable("records", {
   payload: jsonb("payload").notNull(),
   hash: text("hash").notNull(),
 });
+
+/** Each shopping-agent run, kept so a result can be shared and the model's steps reviewed later. */
+export const agentRuns = pgTable("agent_runs", {
+  id: text("id").primaryKey(),
+  message: text("message").notNull(),
+  engine: text("engine").notNull(),
+  answer: text("answer").notNull(),
+  results: jsonb("results").notNull(),
+  trace: jsonb("trace").notNull(),
+  usage: jsonb("usage"),
+  notes: jsonb("notes").$type<string[]>().notNull().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("agent_runs_created_idx").on(t.createdAt)]);
