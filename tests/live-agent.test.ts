@@ -42,6 +42,7 @@ describe.runIf(live)("live buyer agent", () => {
       steps: out.trace.map((t) => `${t.tool} by ${t.by ?? "code"}`),
       results: out.results.map((r) => ({ offer: r.offer?.offer_id, title: r.offer?.title, final: r.final, model_reason: r.model_reason })) }, null, 2));
     expect(out.engine).not.toBe("scripted");
+    expect(out.trace.at(-1)?.tool).toBe("present_recommendations"); // the model finished the run itself
     expect(out.results.find((r) => r.offer?.offer_id === "of_copy")?.final).toBe("avoid");
   }, 180_000);
 });
