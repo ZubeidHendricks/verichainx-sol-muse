@@ -9,7 +9,8 @@ import { attribute } from "@/lib/solana/items";
 import { memoInstruction } from "@/lib/solana/memo";
 import { orderMemo } from "@/lib/solana/purchase";
 import {
-  createMerchant, delistItem, getItem, listItem, makeOffer, registerItem, registrationRecord, type Item, type Merchant,
+  createMerchant, delistItem, domainProof, getItem, listItem, makeOffer, registerItem, registrationRecord, verifyDomain,
+  type Item, type Merchant,
 } from "@/server/catalog";
 import { schema } from "@/server/db";
 import { refreshOrder, startPurchase } from "@/server/pay";
@@ -117,5 +118,19 @@ describe("register, offer, pay, confirm", () => {
     // The chain says Lerato's wallet holds the NFT, so the service won't sign a sale paying the copier.
     await expect(startPurchase(app, offer.id, app.buyer.publicKey)).rejects.toThrow("NFT belongs to someone else");
     expect(app.local.tokenBalance(copier.wallet, app.config.usdcMint)).toBe(0n);
+  });
+});
+
+describe("domain verification", () => {
+  it("verifies a domain whose TXT record names the merchant's wallet", async () => {
+    const app = await makeTestApp();
+    const m = await createMerchant(app, { name: "Lerato Bags", domain: "lerato-bags.example" });
+    const proof = domainProof(m);
+    expect(proof).toEqual({ name: "_vcx.lerato-bags.example", value: `vcx-verify=${m.wallet}` });
+    await expect(verifyDomain(app, m.id, async () => { throw new Error("ENOTFOUND"); })).rejects.toThrow("no TXT record");
+    await expect(verifyDomain(app, m.id, async () => [["vcx-verify=someone-else"]])).rejects.toThrow("should be");
+    // Long TXT values arrive split into chunks.
+    const v = await verifyDomain(app, m.id, async () => [["v=spf1 -all"], [proof.value.slice(0, 20), proof.value.slice(20)]]);
+    expect(v.domainVerifiedAt).not.toBeNull();
   });
 });

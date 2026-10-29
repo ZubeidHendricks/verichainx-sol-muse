@@ -119,7 +119,7 @@ export async function verifyOffer(app: App, env: Envelope): Promise<Verdict> {
   } else {
     add("listing", true, "no replica language");
   }
-  add("photos", null, "photo comparison not run (scripted engine)");
+  add("photos", null, "photo comparison not run yet");
 
   const seller_risk = Math.min(100, risk);
   const recommendation: Recommendation = gate ? "avoid" : cautions.length || seller_risk >= 40 ? "caution" : "recommended";

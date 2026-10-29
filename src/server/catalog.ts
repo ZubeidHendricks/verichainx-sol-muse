@@ -59,6 +59,30 @@ export async function getMerchant(app: App, id: string): Promise<Merchant> {
   return m;
 }
 
+/** The DNS TXT record a merchant publishes at `_vcx.<domain>` to prove the domain is theirs (§5.2). */
+export function domainProof(m: Pick<Merchant, "domain" | "wallet">) {
+  return { name: `_vcx.${m.domain}`, value: `vcx-verify=${m.wallet}` };
+}
+
+/** Marks the merchant's domain verified if its TXT record names their wallet. `lookup` is DNS in the app. */
+export async function verifyDomain(app: App, merchantId: string,
+  lookup: (name: string) => Promise<string[][]> = (n) => import("node:dns/promises").then((d) => d.resolveTxt(n))): Promise<Merchant> {
+  const m = await getMerchant(app, merchantId);
+  if (!m.domain) throw new Refused("add a domain first");
+  const proof = domainProof(m);
+  let records: string[][];
+  try {
+    records = await lookup(proof.name);
+  } catch {
+    throw new Refused(`no TXT record found at ${proof.name}`);
+  }
+  if (!records.some((chunks) => chunks.join("").trim() === proof.value)) {
+    throw new Refused(`the TXT record at ${proof.name} should be ${proof.value}`);
+  }
+  const [row] = await app.db.update(merchants).set({ domainVerifiedAt: app.now() }).where(eq(merchants.id, m.id)).returning();
+  return row;
+}
+
 export async function getItem(app: App, id: string): Promise<Item> {
   const [i] = await app.db.select().from(items).where(eq(items.id, id));
   if (!i) throw new NotFound(`no item ${id}`);

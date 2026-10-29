@@ -32,14 +32,16 @@ Work in progress, devnet only.
   engine as the last resort. The model picks the tool calls; code verifies every offer and caps each recommendation
   with the guardrail. `npm run agent:live` runs one real model against a local chain.
 - Public verification by asset (`/api/verify/:asset`).
+- Web pages: the shopping agent (`/`), offers with Solana Pay QR and live payment status (`/o/:offer`), ownership NFT
+  and origin record (`/i/:asset`), orders (`/orders/:id`) and shops (`/merchant`, devnet demo behind `MERCHANT_DEMO=1`).
+- Shop domain verification by DNS TXT record (`_vcx.<domain>` → `vcx-verify=<shop wallet>`).
 - Devnet setup and an end-to-end devnet purchase script. The first run, on 2026-10-29, was
   [this purchase](https://explorer.solana.com/tx/4uYM5ztLWhEtbFeSygss3LUmG7yqkKD5zzjdBG5gg5KdvzLfVtGkiTtyMQ6ctZj6oF75dJiytwZ9LRMtcs2H9Edq?cluster=devnet):
   129 USDC split 127.71 to the merchant and 1.29 to the treasury, with the NFT moving to the buyer, in one transaction.
 
 **Next:**
 - AI photo comparison.
-- Web UI.
-- SIWS and DNS verification.
+- Sign In With Solana for shops, and shops bringing their own wallet.
 - Shopify.
 
 ## Develop
@@ -62,6 +64,13 @@ git config core.hooksPath .githooks
 
 Devnet: `npm run devnet:setup` creates the service keys, a test USDC mint and `.env.local`. Fund the fee
 payer it prints at https://faucet.solana.com. Then `npm run devnet:e2e` runs one real purchase.
+
+To try the web app on devnet: `npm run devnet:seed` mints three demo shops' items, then `MERCHANT_DEMO=1 npm run dev`.
+Phone wallets need the app on a public URL (set `APP_URL` to your tunnel). Without a phone,
+`npm run demo:wallet -- <offerId> http://localhost:3000` plays the buyer's wallet.
+
+The local database (PGlite, `.data/pglite`) is single-process and locked while in use: stop `npm run dev`
+before running `devnet:seed` or `scripts/db-peek.mts`.
 
 ## Layout
 

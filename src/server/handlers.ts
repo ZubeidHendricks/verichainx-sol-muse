@@ -6,12 +6,12 @@ import { TemplateMismatch } from "@/lib/solana/purchase";
 import type { App } from "./app";
 import { NotFound, Refused, checkOffer, loadOffer } from "./catalog";
 import { refreshOrder, startPurchase } from "./pay";
+import { assetReport, offerStatus } from "./views";
+import { offers } from "./db/schema";
+import { inArray } from "drizzle-orm";
 import { localSource, shopWithModels } from "./agents/buyer";
 import { answerNeed } from "./agents/merchant";
 import { envelopeSchema } from "@/lib/envelope";
-import { hashRecord } from "@/lib/canonical";
-import { schema } from "./db";
-import { eq } from "drizzle-orm";
 
 /**
  * HTTP handlers, kept free of Next.js so tests can call them with plain Requests. The route files
@@ -189,33 +189,21 @@ export async function shopPost(app: App, req: Request): Promise<Response> {
   return guarded(app, async () => {
     const { message } = (await req.json().catch(() => ({}))) as { message?: unknown };
     if (typeof message !== "string" || !message.trim() || message.length > 500) throw new Refused("message is required");
-    return json(app, await shopWithModels(app, message.trim(), [localSource(app)], app.agentModels ?? []));
+    const out = await shopWithModels(app, message.trim(), [localSource(app)], app.agentModels ?? []);
+    // Offers this app holds get a pay page; ones from other apps' agents are shown but paid there.
+    const ids = out.results.map((r) => r.offer?.offer_id).filter((id): id is string => Boolean(id));
+    const here = new Set((ids.length ? await app.db.select({ id: offers.id }).from(offers).where(inArray(offers.id, ids)) : [])
+      .map((o) => o.id));
+    return json(app, { ...out, results: out.results.map((r) => ({ ...r, local: here.has(r.offer?.offer_id ?? "") })) });
   });
 }
 
 /** GET /api/verify/:asset: public check of owner, listing and origin record for any item NFT. */
 export async function verifyAssetGet(app: App, assetId: string): Promise<Response> {
-  return guarded(app, async () => {
-    const asset = await app.chain.getAsset(assetId);
-    if (!asset) throw new NotFound(`no asset ${assetId}`);
-    const [owner] = await app.db.select().from(schema.merchants).where(eq(schema.merchants.wallet, asset.owner));
-    const [item] = await app.db.select().from(schema.items).where(eq(schema.items.asset, assetId));
-    const h = attribute(asset, "registration_hash");
-    const [rec] = h ? await app.db.select().from(schema.records).where(eq(schema.records.hash, h)) : [];
-    const d = asset.transferDelegate?.authority;
-    return json(app, {
-      asset: assetId,
-      name: asset.name,
-      owner: asset.owner,
-      owner_merchant: owner ? { id: owner.id, name: owner.name, domain: owner.domain, verified: Boolean(owner.domainVerifiedAt) } : null,
-      listed: d?.type === "Address" && d.address === app.keys.settlement.publicKey,
-      origin: h ? {
-        registration_hash: h,
-        record_sig: rec?.sig ?? null,
-        recomputes: rec ? hashRecord(rec.payload) === h : false,
-        record: rec?.payload ?? null,
-      } : null,
-      item: item ? { id: item.id, title: item.title, status: item.status } : null,
-    });
-  });
+  return guarded(app, async () => json(app, await assetReport(app, assetId)));
+}
+
+/** GET /api/offers/:offer/status: the newest order on an offer, refreshed from the chain. */
+export async function offerStatusGet(app: App, offerId: string): Promise<Response> {
+  return guarded(app, async () => json(app, await offerStatus(app, offerId)));
 }

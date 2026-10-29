@@ -38,11 +38,15 @@ function env(name: string): string {
   return v;
 }
 
-let app: Promise<App> | undefined;
+/**
+ * One App per process, kept on globalThis: Next bundles each route separately, and two PGlite
+ * instances on the same data directory don't see each other's writes.
+ */
+const shared = globalThis as typeof globalThis & { __vcxApp?: Promise<App> };
 
 /** The app wired from the environment. Tests build their own App with LiteSVM and in-memory PGlite. */
 export function getApp(): Promise<App> {
-  app ??= (async () => {
+  shared.__vcxApp ??= (async () => {
     const umi = makeUmi(env("SOLANA_RPC_URL"));
     return {
       db: await openDb(process.env.PGLITE_DIR ?? ".data/pglite"),
@@ -66,5 +70,5 @@ export function getApp(): Promise<App> {
       agentModels: modelsFromEnv(),
     };
   })();
-  return app;
+  return shared.__vcxApp;
 }
