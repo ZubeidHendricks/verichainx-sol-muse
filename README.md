@@ -29,6 +29,10 @@ Work in progress, devnet only.
 - Merchant agents (`POST /agent/v1/offers`) and discovery (`/.well-known/vcx-agent.json`).
 - Verifier: seller, ownership, origin record, price, replica language, and the shop's history (completed sales and
   age) as seller risk.
+- Photo check: each registered photo's perceptual hash goes into the origin record (so the NFT's hash covers it), and
+  the listing photo is compared with them. A photo that isn't a registered one goes to a vision model when
+  `PHOTO_MODEL` is set (Muse Spark, or a free Groq model); its "different item" adds risk, its "same" never clears a
+  failed check.
 - Buyer agent (`POST /api/agent/shop`) on Muse Spark (Meta Model API), with Groq as a fallback and the scripted
   engine as the last resort. The model picks the tool calls; code verifies every offer and caps each recommendation
   with the guardrail. `npm run agent:live` runs one real model against a local chain.
@@ -49,7 +53,6 @@ Work in progress, devnet only.
   129 USDC split 127.71 to the merchant and 1.29 to the treasury, with the NFT moving to the buyer, in one transaction.
 
 **Next:**
-- AI photo comparison.
 - Shopify.
 
 ## Develop

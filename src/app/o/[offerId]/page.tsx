@@ -41,6 +41,10 @@ async function Offer({ params }: { params: Promise<{ offerId: string }> }) {
           <p className="display" style={{ fontSize: 34, margin: 0 }}>{offer.price} <span className="eyebrow">USDC</span></p>
           {item.description && <p style={{ maxWidth: "58ch" }}>{item.description}</p>}
         </div>
+        {item.photos[0] && (
+          // eslint-disable-next-line @next/next/no-img-element -- shop photos can be on any host
+          <img className="photo" src={item.photos[0]} alt={item.title} width={420} height={420} />
+        )}
         <div className="panel">
           <h2 className="eyebrow">
             Checks · <span className={`stamp ${verdict.recommendation}`} style={{ position: "static", display: "inline-block", marginLeft: 6 }}>

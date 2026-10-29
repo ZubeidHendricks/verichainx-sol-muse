@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { and, count, eq, inArray, min } from "drizzle-orm";
 
 import { hashRecord } from "@/lib/canonical";
@@ -8,6 +10,9 @@ import { attribute } from "@/lib/solana/items";
 
 import type { App } from "../app";
 import { schema } from "../db";
+import { MATCH_BITS, closestPrint, toDataUrl, type PhotoPrint } from "../photos";
+
+import { judgePhotos, type PhotoJudgement } from "./vision";
 
 /** Replica language (§9), shared in spirit with GlobalChain Muse's lexicon. */
 const REPLICA_TERMS = ["1:1", "mirror quality", "aaa grade", "aaa quality", "replica", "inspired by the original",
@@ -69,6 +74,7 @@ export async function verifyOffer(app: App, env: Envelope): Promise<Verdict> {
     if (!verified) { risk += 20; cautions.push("The seller's domain isn't verified yet."); }
   }
   const sellerWallet = byAgent?.wallet ?? o.seller;
+  let prints: PhotoPrint[] = [];
 
   // Ownership: the chain decides who can sell this item.
   if (!o.asset) {
@@ -101,6 +107,7 @@ export async function verifyOffer(app: App, env: Envelope): Promise<Verdict> {
         gate ??= "The origin record doesn't match.";
       } else {
         add("origin", true, `origin record ${rec.sig.slice(0, 8)}… recomputes to the NFT's hash`);
+        prints = (rec.payload as { fingerprint?: { photos?: PhotoPrint[] } | null }).fingerprint?.photos ?? [];
         const originPrice = (rec.payload as { origin_price?: string }).origin_price;
         if (originPrice && parseUsdc(o.price) * 10n < parseUsdc(originPrice) * 4n) {
           add("price", false, `asking ${o.price} against an origin price of ${originPrice}`);
@@ -134,7 +141,14 @@ export async function verifyOffer(app: App, env: Envelope): Promise<Verdict> {
   } else if (!byAgent) {
     add("history", false, "no sales history here");
   }
-  add("photos", null, "photo comparison not run yet");
+  const photo = gate ? null : await photoCheck(app, o.image, prints);
+  if (photo) {
+    add("photos", photo.ok, photo.detail);
+    risk += photo.risk;
+    if (photo.caution) cautions.push(photo.caution);
+  } else {
+    add("photos", null, "not compared: the offer already failed a check");
+  }
 
   const seller_risk = Math.min(100, risk);
   const recommendation: Recommendation = gate ? "avoid" : cautions.length || seller_risk >= 40 ? "caution" : "recommended";
@@ -143,6 +157,48 @@ export async function verifyOffer(app: App, env: Envelope): Promise<Verdict> {
     verified_seller: Boolean(byAgent?.domainVerifiedAt) && !gate,
     evidence, reasons: gate ? [gate] : cautions,
   };
+}
+
+type PhotoCheck = { ok: boolean | null; detail: string; risk: number; caution?: string };
+const judged = new WeakMap<App, Map<string, PhotoJudgement>>();
+
+/**
+ * The listing photo against the photos registered with the item: the same picture passes by hash; a different
+ * one goes to the vision model when there is one. A model's "same" passes, its "different" adds risk.
+ */
+async function photoCheck(app: App, image: string | undefined, prints: PhotoPrint[]): Promise<PhotoCheck> {
+  if (!prints.length) return { ok: null, detail: "no photos were registered with the item", risk: 0 };
+  if (!image) return { ok: null, detail: "the listing has no photo", risk: 0 };
+  const img = app.images ? await app.images(image).catch(() => null) : null;
+  if (!img) return { ok: null, detail: "the listing photo couldn't be loaded", risk: 0 };
+  const near = (await closestPrint(img, prints))!;
+  if (near.bits <= MATCH_BITS) {
+    return { ok: true, detail: `listing photo matches registered photo ${near.print.id} (${near.bits}/64 bits differ)`, risk: 0 };
+  }
+  const unmatched: PhotoCheck = { ok: null, detail: "the listing photo isn't one of the registered photos", risk: 10,
+    caution: "The listing photo isn't one of the item's registered photos." };
+  if (!app.photoModel) return unmatched;
+
+  const cache = judged.get(app) ?? new Map<string, PhotoJudgement>();
+  judged.set(app, cache);
+  const key = `${createHash("sha256").update(img).digest("hex")}:${prints.map((p) => p.sha256).join(",")}`;
+  let j = cache.get(key);
+  if (!j) {
+    try {
+      const registered = (await Promise.all(prints.slice(0, 3).map((p) => app.images!(p.url).catch(() => null))))
+        .filter((b): b is Buffer => Boolean(b));
+      if (!registered.length) return unmatched;
+      j = await judgePhotos(app.photoModel, await Promise.all(registered.map((b) => toDataUrl(b))), await toDataUrl(img));
+      cache.set(key, j);
+    } catch (e) {
+      return { ...unmatched, detail: `${unmatched.detail}; the photo model didn't answer (${(e as Error).message.slice(0, 80)})` };
+    }
+  }
+  if (j.same === true) return { ok: true, detail: `${j.by}: ${j.reason}`, risk: 0 };
+  if (j.same === false) {
+    return { ok: false, detail: `${j.by}: ${j.reason}`, risk: 25, caution: "The listing photo doesn't look like the registered item." };
+  }
+  return { ...unmatched, detail: `${unmatched.detail}; ${j.by} couldn't tell: ${j.reason}` };
 }
 
 const NEW_SHOP_DAYS = 7;

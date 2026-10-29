@@ -5,8 +5,10 @@
  */
 
 export type ToolCall = { id: string; type: "function"; function: { name: string; arguments: string } };
+export type ContentPart = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
 export type ChatMessage =
-  | { role: "system" | "user"; content: string }
+  | { role: "system"; content: string }
+  | { role: "user"; content: string | ContentPart[] }
   | { role: "assistant"; content: string | null; tool_calls?: ToolCall[] }
   | { role: "tool"; tool_call_id: string; content: string };
 export type ToolSpec = {
@@ -84,28 +86,45 @@ export function openAiCompatible(o: Options): ChatModel {
  * GROQ_API_KEY is set. A failed turn moves to the next one; with none left the scripted engine runs.
  * AGENT_PROVIDER (muse, groq or scripted) pins a single choice.
  */
+const museModel = (env: Record<string, string | undefined>, model = env.MUSE_MODEL ?? "muse-spark-1.3") => openAiCompatible({
+  provider: "muse", baseUrl: env.META_API_BASE ?? "https://api.meta.ai/v1", apiKey: env.MODEL_API_KEY!,
+  model, instructionRole: "developer",
+  extra: { reasoning_effort: env.REASONING_EFFORT ?? "medium" },
+  // Muse Spark reasons before it answers; a turn can take over a minute.
+  timeoutMs: Number(env.MUSE_TIMEOUT_MS ?? 120_000),
+});
+const groqModel = (env: Record<string, string | undefined>, model = env.GROQ_MODEL ?? "openai/gpt-oss-120b") => openAiCompatible({
+  provider: "groq", baseUrl: "https://api.groq.com/openai/v1", apiKey: env.GROQ_API_KEY!, model, instructionRole: "system",
+});
+
 export function modelsFromEnv(env: Record<string, string | undefined> = process.env): ChatModel[] {
-  const muse = () => openAiCompatible({
-    provider: "muse", baseUrl: env.META_API_BASE ?? "https://api.meta.ai/v1", apiKey: env.MODEL_API_KEY!,
-    model: env.MUSE_MODEL ?? "muse-spark-1.3", instructionRole: "developer",
-    extra: { reasoning_effort: env.REASONING_EFFORT ?? "medium" },
-    // Muse Spark reasons before it answers; a turn can take over a minute.
-    timeoutMs: Number(env.MUSE_TIMEOUT_MS ?? 120_000),
-  });
-  const groq = () => openAiCompatible({
-    provider: "groq", baseUrl: "https://api.groq.com/openai/v1", apiKey: env.GROQ_API_KEY!,
-    model: env.GROQ_MODEL ?? "openai/gpt-oss-120b", instructionRole: "system",
-  });
   switch (env.AGENT_PROVIDER) {
     case "scripted": return [];
     case "muse":
       if (!env.MODEL_API_KEY) throw new Error("AGENT_PROVIDER=muse needs MODEL_API_KEY (Meta Model API)");
-      return [muse()];
+      return [museModel(env)];
     case "groq":
       if (!env.GROQ_API_KEY) throw new Error("AGENT_PROVIDER=groq needs GROQ_API_KEY");
-      return [groq()];
+      return [groqModel(env)];
     case undefined: case "":
-      return [...(env.MODEL_API_KEY ? [muse()] : []), ...(env.GROQ_API_KEY ? [groq()] : [])];
+      return [...(env.MODEL_API_KEY ? [museModel(env)] : []), ...(env.GROQ_API_KEY ? [groqModel(env)] : [])];
     default: throw new Error(`unknown AGENT_PROVIDER ${env.AGENT_PROVIDER}`);
+  }
+}
+
+/**
+ * The model that compares photos, only when PHOTO_MODEL asks for one: each comparison sends images, so it
+ * costs more than a text turn. "muse" is Muse Spark; "groq" is a Qwen vision model on Groq's free tier.
+ */
+export function visionModelFromEnv(env: Record<string, string | undefined> = process.env): ChatModel | null {
+  switch (env.PHOTO_MODEL) {
+    case undefined: case "": case "off": return null;
+    case "muse":
+      if (!env.MODEL_API_KEY) throw new Error("PHOTO_MODEL=muse needs MODEL_API_KEY (Meta Model API)");
+      return museModel(env, env.MUSE_VISION_MODEL ?? env.MUSE_MODEL ?? "muse-spark-1.3");
+    case "groq":
+      if (!env.GROQ_API_KEY) throw new Error("PHOTO_MODEL=groq needs GROQ_API_KEY");
+      return groqModel(env, env.GROQ_VISION_MODEL ?? "qwen/qwen3.8-27b");
+    default: throw new Error(`unknown PHOTO_MODEL ${env.PHOTO_MODEL}`);
   }
 }

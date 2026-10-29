@@ -10,6 +10,7 @@ import { Refused } from "./catalog";
 import { openDb } from "./db";
 import { seedDemoShops } from "./demo-shops";
 import { LocalChain, SvmChainPort } from "./local-chain";
+import { httpImageLoader } from "./photos";
 
 /**
  * The local demo (`VCX_LOCAL_CHAIN=1`): the whole app on an in-process Solana VM and an in-memory database,
@@ -20,22 +21,25 @@ export type LocalApp = App & { local: LocalChain };
 
 export const isLocal = () => process.env.VCX_LOCAL_CHAIN === "1";
 
-export async function localApp(models: App["agentModels"]): Promise<LocalApp> {
+export async function localApp(models: App["agentModels"], photoModel: App["photoModel"]): Promise<LocalApp> {
   const local = new LocalChain();
   const umi = local.umi;
   const keys = { feePayer: generateSigner(umi), settlement: generateSigner(umi), anchor: generateSigner(umi) };
   const treasury = generateSigner(umi);
   local.fund(keys.feePayer, keys.anchor);
   const usdcMint = await local.createUsdc(keys.feePayer, [{ owner: treasury.publicKey, amount: 0n }]);
+  const appUrl = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const app: LocalApp = {
     db: await openDb(), chain: new SvmChainPort(local), umi, keys, local,
     config: {
-      cluster: "devnet", appUrl: (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, ""), usdcMint,
+      cluster: "devnet", appUrl, usdcMint,
       treasury: treasury.publicKey, feeBps: Number(process.env.PROTOCOL_FEE_BPS ?? 100),
       sealSecret: randomBytes(32).toString("hex"), offerTtlMinutes: 15,
     },
     now: () => new Date(),
     agentModels: models,
+    images: httpImageLoader(appUrl),
+    photoModel,
   };
   await seedDemoShops(app);
   return app;

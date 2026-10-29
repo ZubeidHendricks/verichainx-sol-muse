@@ -33,7 +33,8 @@ export async function seedDemoShops(app: App, log: (line: string) => void = () =
   for (const s of DEMO_SHOPS) {
     const m = await createMerchant(app, { name: s.name, domain: s.domain });
     for (const it of s.items) {
-      const item = await registerItem(app, m.id, { ...it, photos: [] });
+      const slug = it.title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const item = await registerItem(app, m.id, { ...it, photos: [`${app.config.appUrl}/demo/${slug}.jpg`] });
       await listItem(app, item.id);
       log(`${s.name.padEnd(16)} ${it.title.padEnd(24)} ${it.price.padStart(4)} USDC  ${item.asset}`);
     }

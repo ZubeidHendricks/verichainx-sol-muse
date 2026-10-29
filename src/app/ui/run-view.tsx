@@ -30,7 +30,7 @@ export function RunView({ reply, runId }: { reply: ShopReply; runId?: string }) 
               <Tag key={`${r.offer?.offer_id}-${i}`} index={i} title={r.offer?.title ?? "Unreadable offer"}
                 shop={r.offer?.merchant_domain ?? r.offer?.merchant ?? r.from} price={r.offer?.price ?? "?"}
                 verdict={r.final} reason={r.model_reason ?? r.reasons[0]} evidence={r.evidence}
-                offerId={r.local ? r.offer?.offer_id : undefined} asset={r.offer?.asset} />
+                offerId={r.local ? r.offer?.offer_id : undefined} asset={r.offer?.asset} image={r.offer?.image} />
             ))}
           </div>
         )}

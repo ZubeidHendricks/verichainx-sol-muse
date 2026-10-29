@@ -46,6 +46,7 @@ export type TagProps = {
   evidence: Evidence[];
   offerId?: string;
   asset?: string;
+  image?: string;
 };
 
 /** One offer as a swing tag: the verdict stamped on, the checks as hallmarks along the bottom. */
@@ -56,7 +57,13 @@ export function Tag(p: TagProps) {
         <span className={`stamp ${p.verdict}`}>{VERDICT[p.verdict]}</span>
         <h3>{p.title}</h3>
         <p className="shop">{p.shop}</p>
-        <p className="price">{p.price}<small>USDC</small></p>
+        <div className="price-row">
+          <p className="price">{p.price}<small>USDC</small></p>
+          {p.image && /^https?:\/\//.test(p.image) && (
+            // eslint-disable-next-line @next/next/no-img-element -- shop photos can be on any host
+            <img className="thumb" src={p.image} alt="" width={64} height={64} loading="lazy" />
+          )}
+        </div>
         {p.reason && <p className="reason">{p.reason}</p>}
         <Marks evidence={p.evidence} />
         <div className="actions">

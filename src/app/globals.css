@@ -155,6 +155,8 @@ code, .mono { font-family: var(--mono); font-size: 0.86em; overflow-wrap: anywhe
 
 .tag h3 { font-family: var(--display); font-stretch: 112%; font-weight: 700; font-size: 20px; line-height: 1.1; margin: 0 0 4px; padding-right: 96px; }
 .tag .shop { font-size: 14px; color: var(--ink-soft); margin: 0 0 14px; }
+.tag .price-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.tag .thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 4px; box-shadow: 0 0 0 1px var(--rule); }
 .tag .price { font-family: var(--display); font-stretch: 125%; font-weight: 800; font-size: 30px; margin: 0; }
 .tag .price small { font-family: var(--mono); font-size: 12px; font-weight: 400; letter-spacing: 0.06em; margin-left: 4px; }
 .tag .reason { font-size: 14px; margin: 12px 0 0; }
@@ -191,6 +193,7 @@ code, .mono { font-family: var(--mono); font-size: 0.86em; overflow-wrap: anywhe
 .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 18px; margin: 0; }
 .facts dt { color: var(--ink-soft); font-size: 14px; }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
+.photo { display: block; width: 100%; max-width: 420px; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius); }
 .qr { width: 220px; max-width: 100%; background: #fff; padding: 8px; border-radius: var(--radius); }
 .qr svg { display: block; width: 100%; height: auto; }
 .status { font-family: var(--mono); font-size: 14px; margin-top: 16px; }

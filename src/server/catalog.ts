@@ -9,6 +9,7 @@ import { formatUsdc, parseUsdc } from "@/lib/money";
 import { buildDelistItem, buildListItem, buildMerchantCollection, buildRegisterItem } from "@/lib/solana/items";
 
 import { newId, type App } from "./app";
+import { fingerprintPhotos } from "./photos";
 import { schema } from "./db";
 import { seal, unseal } from "./sealed";
 
@@ -128,9 +129,12 @@ export async function registerItem(app: App, merchantId: string, input: {
   title: string; description?: string; price: string; photos: string[]; fingerprint?: unknown;
 }): Promise<Item> {
   const m = await getMerchant(app, merchantId);
+  // Photo fingerprints go into the origin record, so its hash on the NFT covers them.
+  const prints = input.fingerprint === undefined && app.images && input.photos.length
+    ? await fingerprintPhotos(input.photos, app.images) : [];
   const draft = {
     title: input.title, description: input.description ?? "", priceUnits: parseUsdc(input.price),
-    photos: input.photos, fingerprint: input.fingerprint ?? null,
+    photos: input.photos, fingerprint: input.fingerprint ?? (prints.length ? { photos: prints } : null),
   };
   const registrationHash = hashRecord(registrationRecord(m, draft));
   const { feePayer, anchor } = app.keys;
