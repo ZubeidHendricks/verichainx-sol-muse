@@ -34,6 +34,8 @@ Work in progress, devnet only.
 - Public verification by asset (`/api/verify/:asset`).
 - Web pages: the shopping agent (`/`), offers with Solana Pay QR and live payment status (`/o/:offer`), ownership NFT
   and origin record (`/i/:asset`), orders (`/orders/:id`) and shops (`/merchant`, devnet demo behind `MERCHANT_DEMO=1`).
+- Buy in the app with a browser wallet (Wallet Standard: Phantom, Solflare, Backpack), next to the Solana Pay QR.
+- Other apps' agents as offer sources (`AGENT_PEERS`), and a demo copier agent (`DEMO_COPIER=1`) for the copy check.
 - Shop domain verification by DNS TXT record (`_vcx.<domain>` → `vcx-verify=<shop wallet>`).
 - Devnet setup and an end-to-end devnet purchase script. The first run, on 2026-10-29, was
   [this purchase](https://explorer.solana.com/tx/4uYM5ztLWhEtbFeSygss3LUmG7yqkKD5zzjdBG5gg5KdvzLfVtGkiTtyMQ6ctZj6oF75dJiytwZ9LRMtcs2H9Edq?cluster=devnet):

@@ -35,7 +35,7 @@ export function ShopChat() {
         method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message }),
       });
       const body = await r.json();
-      if (!r.ok) throw new Error(body.error ?? `The agent stopped (HTTP ${r.status}).`);
+      if (!r.ok) throw new Error(body.message ?? `The agent stopped (HTTP ${r.status}).`);
       setReply(body);
     } catch (e) {
       setError((e as Error).message);

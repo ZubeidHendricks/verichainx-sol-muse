@@ -7,6 +7,8 @@ import { Suspense } from "react";
 import { freshOffer } from "@/app/actions";
 import { EvidenceList, VERDICT } from "@/app/ui/tag";
 import { PayStatus } from "@/app/ui/pay-status";
+import { WalletBuy } from "@/app/ui/wallet-buy";
+import { walletChain } from "@/lib/wallet";
 import { getApp } from "@/server/app";
 import { NotFound } from "@/server/catalog";
 import { offerPage } from "@/server/views";
@@ -66,12 +68,14 @@ async function Offer({ params }: { params: Promise<{ offerId: string }> }) {
         ) : (
           <>
             <p className="small">
-              Scan with a Solana wallet such as Phantom or Solflare. You sign one transaction: {offer.price} USDC goes to the
+              Pay with a Solana wallet such as Phantom or Solflare. You sign one transaction: {offer.price} USDC goes to the
               shop ({view.feeBps / 100}% service fee included), and the item&apos;s NFT comes to your wallet. If either part
               fails, nothing moves.
             </p>
+            <WalletBuy offerId={offer.id} chain={walletChain(app.config.cluster)} />
+            <p className="eyebrow" style={{ margin: "24px 0 8px" }}>Or scan with your phone</p>
             <div className="qr" dangerouslySetInnerHTML={{ __html: pay.qrSvg }} role="img" aria-label="Solana Pay QR code" />
-            <p><a className="btn pay" href={pay.solanaPay}>Open in wallet</a></p>
+            <p><a className="btn ghost small" href={pay.solanaPay}>Open in a wallet app</a></p>
             {pay.blink && <p className="small"><a href={pay.blink}>Pay with a Blink</a></p>}
             {!pay.isPublic && (
               <p className="small muted">Wallets fetch the transaction from this server, so a phone wallet needs the app on a public

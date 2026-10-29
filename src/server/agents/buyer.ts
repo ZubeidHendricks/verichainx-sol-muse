@@ -292,6 +292,6 @@ function summarize(results: Ranked[], budget?: string): string {
   } else {
     parts.push(`No offers${budget ? ` under ${budget} USDC` : ""} passed verification.`);
   }
-  if (avoided.length) parts.push(`Avoid ${avoided.length}: ${avoided.map((r) => r.reasons[0]).join(" ")}`);
+  if (avoided.length) parts.push(`Avoid ${avoided.length}: ${[...new Set(avoided.map((r) => r.reasons[0]))].join(" ")}`);
   return parts.join(" ");
 }
