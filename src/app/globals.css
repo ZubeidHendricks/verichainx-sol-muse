@@ -217,3 +217,33 @@ code, .mono { font-family: var(--mono); font-size: 0.86em; overflow-wrap: anywhe
 .pill.sold { color: var(--pay); }
 .pill.draft, .pill.delisted { color: var(--ink-soft); }
 .table-scroll { overflow-x: auto; }
+
+/* The conversation: shop agents on the left, the shopper on the right, the shopper's agent pinned between */
+.chat { margin-top: 32px; max-width: 980px; }
+.thread { list-style: none; padding: 0; margin: 0; display: grid; gap: 22px; }
+.msg .who { font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; color: var(--ink-soft); margin: 0 0 6px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.msg .who .shop { color: var(--ink); font-weight: 600; }
+.msg .bubble { margin: 0; padding: 12px 16px; border-radius: 4px 14px 14px 14px; background: var(--card); max-width: 62ch; font-size: 17px; }
+.msg.shopper { justify-self: end; }
+.msg.shopper .bubble { background: var(--ink); color: var(--fog); border-radius: 14px 4px 14px 14px; }
+.msg.rep .tags { padding-top: 8px; }
+.seal { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
+.seal.ok { color: var(--ok); }
+.seal.na { color: var(--warn); }
+.seal.bad { color: var(--bad); }
+.msg.agent .note { border-left: 3px solid var(--pay); background: var(--fog-deep); padding: 10px 16px; max-width: 70ch; border-radius: 0 6px 6px 0; }
+.msg.agent .note > p { margin: 0 0 6px; }
+.msg.agent .who { color: var(--pay); text-transform: uppercase; letter-spacing: 0.08em; }
+.msg.agent .engine { text-transform: none; letter-spacing: 0; color: var(--ink-soft); }
+.msg.agent details.log { margin-top: 6px; }
+.msg.agent details.log summary { cursor: pointer; }
+.msg.agent details.log ol { margin-top: 8px; }
+.tag .reason strong { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pay); font-weight: 600; }
+.typing { color: var(--ink-soft); font-size: 15px; margin: 20px 0 0; }
+.typing::after { content: ""; display: inline-block; width: 1.2em; text-align: left; animation: dots 1.2s steps(4) infinite; }
+@keyframes dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+@media (prefers-reduced-motion: reduce) { .typing::after { animation: none; content: "…"; } }
+.composer { padding-top: 16px; margin-top: 24px; border-top: 1px solid var(--rule); max-width: none; }
+.msg.agent .log .who { display: block; margin: 0; font-size: 11px; color: var(--ink-soft); text-transform: none; letter-spacing: 0; opacity: 0.8; }
+.msg.rep .aside { margin: 8px 0 0 18px; max-width: 60ch; font-size: 15px; border-left: 3px solid var(--pay); padding: 2px 0 2px 12px; }
+.msg.rep .aside strong { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pay); }

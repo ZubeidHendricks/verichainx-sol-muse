@@ -15,10 +15,13 @@ test.describe.serial("shopper and seller on the local chain", () => {
   });
   test.afterAll(() => page.close());
 
-  test("the agent recommends the real tote and flags the copy", async () => {
+  test("shop agents pitch, and the shopper's agent recommends the real tote and flags the copy", async () => {
     await page.goto("/");
+    await expect(page.locator(".msg.rep").first()).toContainText("sales agent");
     await page.getByLabel("What are you looking for?").fill("a woven tote under $200");
-    await page.getByRole("button", { name: "Find offers" }).click();
+    await page.getByRole("button", { name: "Send" }).click();
+    await expect(page.locator(".msg.shopper")).toHaveText("a woven tote under $200");
+    await expect(page.locator(".msg.rep").filter({ hasText: "lerato-bags-outlet.example" })).toBeVisible();
 
     const real = page.locator(".tag-wrap").filter({ hasText: "Woven Market Tote" }).filter({ hasText: "lerato-bags.example" });
     const copy = page.locator(".tag-wrap").filter({ hasText: "Woven Market Tote" }).filter({ hasText: "outlet" });

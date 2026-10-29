@@ -43,6 +43,8 @@ export type TagProps = {
   price: string;
   verdict: Recommendation;
   reason?: string;
+  /** Who wrote the reason, shown before it. */
+  reasonLabel?: string;
   evidence: Evidence[];
   offerId?: string;
   asset?: string;
@@ -64,7 +66,7 @@ export function Tag(p: TagProps) {
             <img className="thumb" src={p.image} alt="" width={64} height={64} loading="lazy" />
           )}
         </div>
-        {p.reason && <p className="reason">{p.reason}</p>}
+        {p.reason && <p className="reason">{p.reasonLabel && <strong>{p.reasonLabel}: </strong>}{p.reason}</p>}
         <Marks evidence={p.evidence} />
         <div className="actions">
           {p.offerId && p.verdict !== "excluded" && (

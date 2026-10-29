@@ -8,10 +8,18 @@ import { parseCaip10 } from "./chains";
 /** The shared agent message format (§10). Signed over the canonical JSON of everything except `sig`. */
 export const VERSION = "vcx-agent/1";
 
+/** A turn of the shopping conversation, so shop agents can answer follow-ups. Newest last. */
+export const turn = z.object({
+  role: z.enum(["shopper", "rep", "agent"]),
+  from: z.string().max(120).optional(), // a rep's shop, e.g. "lerato-bags.example"
+  text: z.string().max(1000),
+});
+
 export const needBody = z.object({
   text: z.string().min(1).max(500),
   budget: z.string().regex(/^\d+(\.\d{1,6})?$/).optional(),
   currency: z.string().default("USDC"),
+  conversation: z.array(turn).max(16).optional(),
 });
 
 export const offerBody = z.object({
@@ -34,9 +42,17 @@ export const offerBody = z.object({
 
 export const declineBody = z.object({ reason: z.string(), in_reply_to: z.string().optional() });
 
+/** A shop agent talking without making an offer: answering a question, or greeting the shopper. */
+export const replyBody = z.object({
+  text: z.string().min(1).max(1000),
+  merchant: z.string(),
+  merchant_domain: z.string().optional(),
+  in_reply_to: z.string().optional(),
+});
+
 export const envelopeSchema = z.object({
   v: z.literal(VERSION),
-  type: z.enum(["need", "offer", "decline"]),
+  type: z.enum(["need", "offer", "decline", "reply"]),
   id: z.string(),
   from: z.string(),
   created_at: z.string(),
@@ -48,6 +64,8 @@ export const envelopeSchema = z.object({
 export type Envelope = z.infer<typeof envelopeSchema>;
 export type OfferBody = z.infer<typeof offerBody>;
 export type NeedBody = z.infer<typeof needBody>;
+export type ReplyBody = z.infer<typeof replyBody>;
+export type Turn = z.infer<typeof turn>;
 
 export function signingBytes(env: Envelope): Uint8Array {
   return new TextEncoder().encode(canonicalJson({ ...env, sig: undefined })); // canonicalJson drops undefined

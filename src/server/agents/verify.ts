@@ -4,7 +4,7 @@ import { and, count, eq, inArray, min } from "drizzle-orm";
 
 import { hashRecord } from "@/lib/canonical";
 import { parseCaip10 } from "@/lib/chains";
-import { offerBody, verifyEnvelope, type Envelope, type OfferBody } from "@/lib/envelope";
+import { offerBody, replyBody, verifyEnvelope, type Envelope, type OfferBody } from "@/lib/envelope";
 import { parseUsdc } from "@/lib/money";
 import { attribute } from "@/lib/solana/items";
 
@@ -30,6 +30,8 @@ export type Verdict = {
   from: string;
   recommendation: Recommendation;
   seller_risk: number;
+  /** The offer's agent belongs to a shop registered here (verified or not). */
+  known_seller: boolean;
   verified_seller: boolean;
   evidence: Evidence[];
   reasons: string[];
@@ -49,7 +51,7 @@ export async function verifyOffer(app: App, env: Envelope): Promise<Verdict> {
   if (!sig.ok || !parsed.success) {
     add("signature", false, sig.ok ? "offer body is malformed" : `offer signature: ${sig.reason}`);
     return { offer: parsed.success ? parsed.data : null, from: env.from, recommendation: "excluded", seller_risk: 100,
-      verified_seller: false, evidence, reasons: ["The offer isn't validly signed."] };
+      known_seller: false, verified_seller: false, evidence, reasons: ["The offer isn't validly signed."] };
   }
   const o = parsed.data;
   add("signature", true, "signed by the sending agent's key");
@@ -153,7 +155,7 @@ export async function verifyOffer(app: App, env: Envelope): Promise<Verdict> {
   const seller_risk = Math.min(100, risk);
   const recommendation: Recommendation = gate ? "avoid" : cautions.length || seller_risk >= 40 ? "caution" : "recommended";
   return {
-    offer: o, from: env.from, recommendation, seller_risk,
+    offer: o, from: env.from, recommendation, seller_risk, known_seller: Boolean(byAgent),
     verified_seller: Boolean(byAgent?.domainVerifiedAt) && !gate,
     evidence, reasons: gate ? [gate] : cautions,
   };
@@ -234,4 +236,18 @@ export function enforceGuardrail(v: Verdict, proposed: Recommendation): Recommen
   if (v.recommendation === "avoid") return "avoid";
   if (proposed === "recommended" && (failedHardGate || v.recommendation === "caution")) return v.recommendation;
   return proposed;
+}
+
+/** A shop agent's reply without an offer, and whether it comes from a shop we know. */
+export type RepReply = { from: string; shop: string; text: string; known: boolean; verified: boolean; merchantId?: string;
+  /** The shopper's agent's note on what the rep said. */
+  note?: string };
+
+/** Checks a reply's signature and finds its shop by agent key. Unsigned or malformed replies are dropped. */
+export async function verifyReply(app: App, env: Envelope): Promise<RepReply | null> {
+  const body = replyBody.safeParse(env.body);
+  if (!verifyEnvelope(env, app.now()).ok || !body.success) return null;
+  const [m] = await app.db.select().from(schema.merchants).where(eq(schema.merchants.agentPubkey, parseCaip10(env.from).address));
+  return { from: env.from, shop: m ? (m.domain ?? m.name) : (body.data.merchant_domain ?? body.data.merchant), text: body.data.text,
+    known: Boolean(m), verified: Boolean(m?.domainVerifiedAt), merchantId: m?.id };
 }

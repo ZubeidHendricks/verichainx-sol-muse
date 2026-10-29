@@ -99,3 +99,12 @@ export const claims = pgTable("claims", {
   txSig: text("tx_sig"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex("claims_order_item_idx").on(t.shopifyOrderId, t.itemId)]);
+
+/** A shopping conversation (the home page chat): the thread as shown, and the turns shop agents get as context. */
+export const conversations = pgTable("conversations", {
+  id: text("id").primaryKey(),
+  messages: jsonb("messages").notNull(),
+  turns: jsonb("turns").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

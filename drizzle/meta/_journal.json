@@ -36,6 +36,13 @@
       "when": 1793272553490,
       "tag": "0004_shopify_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793275595727,
+      "tag": "0005_conversations",
+      "breakpoints": true
     }
   ]
 }

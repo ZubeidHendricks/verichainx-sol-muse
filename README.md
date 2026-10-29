@@ -2,8 +2,9 @@
 
 Verified sellers, and ownership that moves with payment, for AI shopping agents on Solana.
 
-A shopper's agent collects signed offers from merchants' agents and checks the seller and the item.
-It then buys with one wallet signature. A single transaction pays the merchant in USDC, pays a 1%
+Shopping is a conversation between agents. Each shop's sales agent greets the shopper and pitches its items; the
+shopper's own agent checks every pitch against the chain (seller, ownership, origin record, price, photos) and marks
+it recommended, caution or avoid. The shopper then buys with one wallet signature. A single transaction pays the merchant in USDC, pays a 1%
 protocol fee, moves the item's Metaplex Core NFT to the buyer and records the order with a memo.
 Either all of it lands or none of it does.
 
@@ -51,15 +52,16 @@ Work in progress, devnet only.
   buyer gives the order's email and a wallet, and the NFT moves to them once; five wrong emails lock the claim.
   Needs `SHOPIFY_API_KEY`/`SHOPIFY_API_SECRET` from a Shopify app with protected customer data access for orders.
   The local demo fakes a paid order (`POST /api/local/shopify-order`) to show the claim page.
+- Agent-to-agent shopping on `/`: a verified shop's sales agent welcomes the shopper, and every shop's agent can pitch
+  or answer (a signed offer carrying its pitch, or a signed `reply`). Shop agents see the conversation so far and stick
+  to their own catalogue and prices. The shopper's agent checks each pitch, notes whether replies hold up against the
+  shop's registered items, and answers the shopper. With `DEMO_COPIER=1` a copier's agent pitches cheap copies, and the
+  checks catch them. Conversations have shareable pages (`/c/:id`).
 - Every agent run is saved: a shareable page per run (`/runs/:id`) and a list (`/runs`).
 - A local demo on an in-process Solana VM (`npm run demo:local`), and a browser test on it (`npm run e2e`).
 - Devnet setup and an end-to-end devnet purchase script. The first run, on 2026-10-29, was
   [this purchase](https://explorer.solana.com/tx/4uYM5ztLWhEtbFeSygss3LUmG7yqkKD5zzjdBG5gg5KdvzLfVtGkiTtyMQ6ctZj6oF75dJiytwZ9LRMtcs2H9Edq?cluster=devnet):
   129 USDC split 127.71 to the merchant and 1.29 to the treasury, with the NFT moving to the buyer, in one transaction.
-
-**Next:**
-- Agent-to-agent shopping: a seller's representative agent greets and sells to the shopper, with the shopper's
-  agent verifying each claim.
 
 ## Develop
 
@@ -84,8 +86,8 @@ payer it prints at https://faucet.solana.com. Then `npm run devnet:e2e` runs one
 
 To try the whole app with nothing to set up: `npm run demo:local`, then open http://localhost:3200. It runs on
 LiteSVM with an in-memory database, seeded with the demo shops, and resets on restart. Without a model key the agent
-uses the scripted engine. `npm run e2e` runs the Playwright test on it: a test wallet in the page buys the real tote
-(the copy is flagged), signs in with Solana, resells it, and lists a new item.
+uses the scripted engine. `npm run e2e` runs the Playwright test on it: the shopper asks the shop agents, a test wallet
+in the page buys the real tote (the copy is flagged), signs in with Solana, resells it, and lists a new item.
 
 To try the web app on devnet: `npm run devnet:seed` mints three demo shops' items, then `MERCHANT_DEMO=1 npm run dev`.
 Phone wallets need the app on a public URL (set `APP_URL` to your tunnel). Without a phone,
@@ -115,6 +117,7 @@ src/server/
   handlers.ts        HTTP handlers for the routes in src/app/
   chain.ts           ChainPort: RPC implementation
   sealed.ts          AES-GCM for service-held keys
-  agents/            merchant agents, verifier, buyer agent
+  agents/            shop sales agents, verifier, the shopper's agent, demo copier
+  chat.ts            conversations between the shopper, shop agents and the shopper's agent
 tests/               Vitest; LiteSVM for anything on-chain, in-memory PGlite for the database
 ```
