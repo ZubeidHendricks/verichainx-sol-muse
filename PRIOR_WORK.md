@@ -19,3 +19,9 @@ New here:
 Third-party code is used only through npm packages listed in `package.json`. The Metaplex Core
 program binary used in tests is downloaded from mainnet by `scripts/fetch-programs.mjs` and is not
 committed.
+
+## Ported from verichainx-shop (November 2026)
+
+The Shopify catalog search, store and dropship checks, scorecard, MCP tools, agent-wallet purchase, faucet and the
+agent-buy bot were first built in a sibling app, `verichainx-shop` (Vercel project of the same name), and ported here
+on 1 November 2026, adapted to this app's chain port, verdicts and agent-to-agent chat.

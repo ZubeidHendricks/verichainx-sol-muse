@@ -23,7 +23,7 @@ export function replicaTerms(text: string): string[] {
   return REPLICA_TERMS.filter((w) => t.includes(w));
 }
 
-export type Evidence = { id: string; check: string; ok: boolean | null; detail: string };
+export type Evidence = { id: string; check: string; ok: boolean | null; detail: string; source?: string };
 export type Recommendation = "recommended" | "caution" | "avoid" | "excluded";
 export type Verdict = {
   offer: OfferBody | null;

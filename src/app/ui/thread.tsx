@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { ChatMessage } from "@/server/chat";
+import { formatPrice } from "@/server/stores/catalog";
 
 import { Tag } from "./tag";
 
@@ -26,6 +27,21 @@ export function Thread({ messages }: { messages: ChatMessage[] }) {
 
 function Message({ m, index }: { m: ChatMessage; index: number }) {
   if (m.kind === "shopper") return <p className="bubble">{m.text}</p>;
+  if (m.kind === "stores") {
+    return (
+      <>
+        <p className="who">Also in Shopify stores <span className="seal na">found and checked by your agent</span></p>
+        <div className="tags">
+          {m.results.map((r, j) => (
+            <Tag key={r.product.id} index={index + j} title={r.product.title} shop={r.product.store.public_domain}
+              price={formatPrice(r.product.price_minor, r.product.currency)} currency=""
+              verdict={r.recommendation} reason={r.reasons.join("; ")} reasonLabel="Store check" evidence={r.evidence}
+              image={r.product.photo ?? undefined} scorecard={r.scorecard} storeUrl={r.product.url ?? r.product.checkout_url} />
+          ))}
+        </div>
+      </>
+    );
+  }
   if (m.kind === "rep") {
     return (
       <>
@@ -43,7 +59,8 @@ function Message({ m, index }: { m: ChatMessage; index: number }) {
               <Tag key={`${r.offer?.offer_id}-${j}`} index={index + j} title={r.offer?.title ?? "Unreadable offer"}
                 shop={r.offer?.merchant_domain ?? r.offer?.merchant ?? r.from} price={r.offer?.price ?? "?"}
                 verdict={r.final} reason={r.model_reason ?? r.reasons[0]} reasonLabel="Your agent" evidence={r.evidence}
-                offerId={r.local ? r.offer?.offer_id : undefined} asset={r.offer?.asset} image={r.offer?.image} />
+                offerId={r.local ? r.offer?.offer_id : undefined} asset={r.offer?.asset} image={r.offer?.image}
+                scorecard={r.scorecard} />
             ))}
           </div>
         )}

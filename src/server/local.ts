@@ -6,6 +6,7 @@ import bs58 from "bs58";
 import { parseUsdc } from "@/lib/money";
 
 import type { App } from "./app";
+import { liveStoreSearch } from "./stores/search";
 import { Refused } from "./catalog";
 import { and, eq } from "drizzle-orm";
 
@@ -43,6 +44,7 @@ export async function localApp(models: App["agentModels"], photoModel: App["phot
     agentModels: models,
     images: httpImageLoader(appUrl),
     photoModel,
+    stores: process.env.SHOPIFY_CATALOG === "1" ? liveStoreSearch : undefined,
   };
   await seedDemoShops(app);
   return app;

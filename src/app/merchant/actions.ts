@@ -1,5 +1,6 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { refresh } from "next/cache";
 
@@ -9,6 +10,8 @@ import {
   Refused, createMerchant, delistItem, getItem, getMerchant, listItem, manages, prepareOwnerTx, registerItem,
   startResale, syncItem, verifyDomain,
 } from "@/server/catalog";
+import { schema } from "@/server/db";
+import { advanceOrder } from "@/server/pay";
 import { importProducts, shopifyConfig } from "@/server/shopify";
 
 export type ActionState = { error?: string; done?: string; transaction?: string };
@@ -114,4 +117,17 @@ export async function checkDomain(merchantId: string): Promise<ActionState> {
     await managedShop(app, merchantId);
     await verifyDomain(app, merchantId);
   }, "Domain verified.");
+}
+
+/** The seller marks an order shipped or delivered; each step is anchored on Solana. */
+export async function markOrder(orderId: string, status: "shipped" | "delivered"): Promise<ActionState> {
+  return run(async (app) => {
+    // The shop that sold it, not whoever holds the item now (a buyer may have resold it since).
+    const [row] = await app.db.select({ merchantId: schema.offers.merchantId }).from(schema.orders)
+      .innerJoin(schema.offers, eq(schema.orders.offerId, schema.offers.id)).where(eq(schema.orders.id, orderId));
+    if (!row) throw new Refused("No such order.");
+    await managedShop(app, row.merchantId);
+    await advanceOrder(app, orderId, status);
+    return { done: status === "shipped" ? "Marked shipped." : "Marked delivered." };
+  });
 }

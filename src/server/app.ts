@@ -8,6 +8,7 @@ import { signerFromSecret, makeUmi } from "@/lib/solana/umi";
 import { modelsFromEnv, visionModelFromEnv, type ChatModel } from "./agents/llm";
 import { RpcChain, type ChainPort } from "./chain";
 import { openDb, openPostgres, type Db } from "./db";
+import { liveStoreSearch, type StoreSearch } from "./stores/search";
 import { httpImageLoader, type ImageLoader } from "./photos";
 
 /** Service keys (§7.5). The settlement key holds nothing; it is only ever a transfer delegate. */
@@ -31,6 +32,8 @@ export type App = {
   images?: ImageLoader;
   /** Compares a listing photo with the registered ones when they aren't the same picture (PHOTO_MODEL). */
   photoModel?: ChatModel | null;
+  /** Searches real stores (Shopify's Global Catalog) alongside the shops here; off unless SHOPIFY_CATALOG=1. */
+  stores?: StoreSearch;
 };
 
 export function newId(prefix: string): string {
@@ -83,5 +86,6 @@ async function rpcApp(): Promise<App> {
     agentModels: modelsFromEnv(),
     images: httpImageLoader(appUrl),
     photoModel: visionModelFromEnv(),
+    stores: process.env.SHOPIFY_CATALOG === "1" ? liveStoreSearch : undefined,
   };
 }

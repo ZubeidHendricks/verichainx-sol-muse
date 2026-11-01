@@ -23,6 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/">Shop</Link>
             <Link href="/merchant">Sell</Link>
             <Link href="/runs">Runs</Link>
+            <Link href="/developers">Developers</Link>
             <span className="net">Solana devnet</span>
           </nav>
         </header>

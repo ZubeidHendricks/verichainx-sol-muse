@@ -32,7 +32,9 @@ export type PurchaseTerms = {
   asset: string;
   collection?: string;
   merchant: string; // current owner of the asset and the USDC recipient
-  buyer: string;
+  buyer: string; // pays the USDC and signs
+  /** Who gets the NFT, when not the buyer: a bot pays from its own wallet for its owner. */
+  recipient?: string;
   usdcMint: string;
   treasury: string;
   price: bigint; // USDC base units
@@ -81,7 +83,7 @@ export function buildPurchase(umi: Umi, t: PurchaseTerms, feePayer: Signer, sett
       collection: t.collection ? publicKey(t.collection) : undefined,
       payer: feePayer,
       authority: settlement,
-      newOwner: publicKey(t.buyer),
+      newOwner: publicKey(t.recipient ?? t.buyer),
     }))
     .add(memoInstruction(orderMemo(t)));
 }
@@ -160,7 +162,7 @@ export function assertPurchaseTemplate(
   if (ix.program !== MPL_CORE_PROGRAM_ID || ix.data[0] !== CORE_TRANSFER_V1) fail("expected the NFT transfer");
   const collection = t.collection ?? MPL_CORE_PROGRAM_ID;
   if (ix.accounts[0] !== t.asset || ix.accounts[1] !== collection || ix.accounts[2] !== feePayer
-      || ix.accounts[3] !== settlement || ix.accounts[4] !== t.buyer) fail("NFT transfer accounts");
+      || ix.accounts[3] !== settlement || ix.accounts[4] !== (t.recipient ?? t.buyer)) fail("NFT transfer accounts");
 
   ix = next();
   if (ix.program !== SPL_MEMO_PROGRAM_ID || ix.accounts.length

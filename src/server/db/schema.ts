@@ -52,6 +52,10 @@ export const orders = pgTable("orders", {
   id: text("id").primaryKey(),
   offerId: text("offer_id").notNull().references(() => offers.id),
   buyerWallet: text("buyer_wallet").notNull(),
+  /** Gets the NFT when it isn't the paying wallet (an agent buying for its owner). */
+  recipientWallet: text("recipient_wallet"),
+  /** The most the payer allowed for this order (agent wallets); null when a person signs. */
+  maxPriceUnits: bigint("max_price_units", { mode: "bigint" }),
   reference: text("reference").notNull(),
   orderHash: text("order_hash").notNull(),
   feeBps: integer("fee_bps").notNull(),

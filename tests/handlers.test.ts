@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createMerchant, listItem, makeOffer, registerItem } from "@/server/catalog";
 import { verifyEnvelope } from "@/lib/envelope";
 import {
-  actionGet, actionPost, actionsJson, merchantAgentPost, orderGet, payGet, payPost, shopPost, verifyAssetGet, wellKnown,
+  actionGet, actionPost, actionsJson, faucetPost, merchantAgentPost, orderGet, payGet, payPost, shopPost, verifyAssetGet, wellKnown,
 } from "@/server/handlers";
 
+import { toStoreProduct } from "@/server/stores/catalog";
 import { recentRuns, runPage } from "@/server/views";
 
 import { makeTestApp, type TestApp } from "./testApp";
@@ -126,5 +127,45 @@ describe("agent and verify endpoints", () => {
     expect(saved.reply.results.map((r) => [r.offer?.title, r.final, r.local])).toEqual(
       out.results.map((r: { offer: { title: string }; final: string; local: boolean }) => [r.offer.title, r.final, r.local]));
     expect(await recentRuns(app)).toMatchObject([{ id: out.run_id, engine: "scripted", offers: out.results.length }]);
+  });
+
+  it("gives test USDC from the faucet, within limits", async () => {
+    const wallet = generateSigner(app.umi).publicKey;
+    const faucetReq = (account: string, ip = "198.51.100.7") => new Request("https://sol.example.test/api/faucet", {
+      method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip }, body: JSON.stringify({ account }) });
+    const first = await faucetPost(app, faucetReq(wallet));
+    expect(await first.json()).toMatchObject({ account: wallet, amount: "500.00" });
+    expect(app.local.tokenBalance(wallet, app.config.usdcMint)).toBe(500_000_000n);
+    expect((await faucetPost(app, faucetReq(wallet))).status).toBe(200);
+    expect((await faucetPost(app, faucetReq(wallet))).status).toBe(429);
+    expect((await faucetPost(app, faucetReq("nope", "203.0.113.9"))).status).toBe(400);
+  });
+
+  it("adds checked Shopify stores and scorecards to the conversation", async () => {
+    const queries: unknown[] = [];
+    app.stores = {
+      async search(q) {
+        queries.push(q);
+        return { products: [toStoreProduct({
+          id: "gid://shopify/p/1", title: "Raffia Beach Tote", description: { plain: "Hand-woven raffia, cotton lining." },
+          url: "https://sunbags.example/products/raffia",
+          variants: [{ id: "gid://shopify/ProductVariant/9", price: { amount: 9900, currency: "USD" }, checkout_url: "https://sunbags.example/cart/9:1",
+            seller: { name: "Sun Bags", domain: "sunbags.myshopify.com", links: [{ type: "refund_policy", url: "https://sunbags.example/policies/refund-policy" }] } }],
+        })!] };
+      },
+      facts: async () => ({ product: null, catalog: null, shipping: null }),
+      age: async () => 4,
+    };
+    const out = await (await shopPost(app, post({ message: "a woven tote under $200" }))).json();
+    expect(queries).toEqual([{ query: "woven tote", maxPriceUsd: 200, limit: 8 }]);
+    const stores = out.messages.find((m: { kind: string }) => m.kind === "stores");
+    expect(stores.results[0]).toMatchObject({ recommendation: "recommended", product: { title: "Raffia Beach Tote" } });
+    expect(stores.results[0].scorecard.overall).toBeGreaterThan(50);
+    expect(out.messages.at(-1).text).toContain("I also checked 1 Shopify store");
+    expect(out.results[0].scorecard.rows.find((r: { key: string }) => r.key === "authentic").score).toBeGreaterThanOrEqual(85);
+
+    // A follow-up question isn't a product search.
+    await shopPost(app, post({ message: "Is the handle leather?", conversation_id: out.conversation_id }));
+    expect(queries).toHaveLength(1);
   });
 });

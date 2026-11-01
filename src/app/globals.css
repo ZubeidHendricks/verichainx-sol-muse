@@ -247,3 +247,26 @@ code, .mono { font-family: var(--mono); font-size: 0.86em; overflow-wrap: anywhe
 .msg.agent .log .who { display: block; margin: 0; font-size: 11px; color: var(--ink-soft); text-transform: none; letter-spacing: 0; opacity: 0.8; }
 .msg.rep .aside { margin: 8px 0 0 18px; max-width: 60ch; font-size: 15px; border-left: 3px solid var(--pay); padding: 2px 0 2px 12px; }
 .msg.rep .aside strong { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pay); }
+
+/* Score: a seal under the stamp, and the five-part card behind it. */
+.tag .seal-score { flex: none; margin-left: auto; }
+.tag .seal-score text { font-family: var(--display); font-weight: 800; }
+.scorecard { margin-top: 12px; font-size: 14px; }
+.scorecard summary { cursor: pointer; font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; }
+.scorecard summary span { font-weight: 700; }
+.scorecard ul { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 6px; }
+.scorecard li { display: grid; grid-template-columns: 5.5rem 1fr 2rem; align-items: center; gap: 2px 8px; }
+.scorecard .bar { height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+.scorecard .bar span { display: block; height: 100%; border-radius: 3px; }
+.scorecard .num { font-family: var(--mono); font-size: 12px; text-align: right; }
+.scorecard .why { grid-column: 1 / -1; color: var(--ink-soft); font-size: 13px; }
+.msg.stores .who { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* /developers */
+.tools { margin: 0; display: grid; }
+.tools > div { display: grid; grid-template-columns: minmax(0, 13rem) 1fr; gap: 4px 16px; padding: 12px 0; border-top: 1px solid var(--rule); }
+.tools > div:first-child { border-top: 0; }
+.tools dt { font-weight: 600; }
+.tools dd { margin: 0; color: var(--ink-soft); }
+@media (max-width: 640px) { .tools > div { grid-template-columns: 1fr; } }
+pre.code { margin: 0; padding: 14px 16px; background: var(--fog-deep); border-radius: var(--radius); overflow-x: auto; font-family: var(--mono); font-size: 13px; }

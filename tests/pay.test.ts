@@ -7,13 +7,14 @@ import { verifyEnvelope, type Envelope } from "@/lib/envelope";
 import { parseUsdc } from "@/lib/money";
 import { attribute } from "@/lib/solana/items";
 import { memoInstruction } from "@/lib/solana/memo";
+import { encodeMemo } from "@/lib/records";
 import { orderMemo } from "@/lib/solana/purchase";
 import {
   createMerchant, delistItem, domainProof, getItem, listItem, makeOffer, registerItem, registrationRecord, verifyDomain,
   type Item, type Merchant,
 } from "@/server/catalog";
 import { schema } from "@/server/db";
-import { refreshOrder, startPurchase } from "@/server/pay";
+import { advanceOrder, refreshOrder, startPurchase, submitPurchase } from "@/server/pay";
 import { verifyOffer } from "@/server/agents/verify";
 
 import { makeTestApp, type TestApp } from "./testApp";
@@ -67,10 +68,42 @@ describe("register, offer, pay, confirm", () => {
     expect((await getItem(app, item.id)).status).toBe("sold");
     await expect(startPurchase(app, offer.id, generateSigner(app.umi).publicKey)).rejects.toThrow("item isn't listed");
 
+    // The seller ships, then delivers; each step is a memo on chain carrying the order's hash.
+    await expect(advanceOrder(app, paid.id, "delivered")).rejects.toThrow("can't be marked delivered");
+    const shipped = await advanceOrder(app, paid.id, "shipped");
+    const delivered = await advanceOrder(app, paid.id, "delivered");
+    expect(delivered.events.map((e) => e.status)).toEqual(["pending", "paid", "shipped", "delivered"]);
+    const memos = app.local.history.flatMap((t) => t.memos);
+    expect(memos).toContain(encodeMemo({ t: "order", o: paid.id, asset: item.asset!, s: "shipped", h: paid.orderHash }));
+    expect(shipped.events.at(-1)?.sig).toBeTruthy();
+
     // The sale now counts toward the shop's history on its next offer.
     const next = await listItem(app, (await registerItem(app, merchant.id, { title: "Small Tote", price: "79", photos: PHOTOS })).id);
     const v = await verifyOffer(app, (await makeOffer(app, next.id)).envelope as Envelope);
     expect(v.evidence.find((e) => e.check === "history")).toMatchObject({ ok: true, detail: "1 completed sale; joined today" });
+  });
+
+  it("lets an agent pay from its own wallet for its owner, within a spending cap, relaying only this order's purchase", async () => {
+    const offer = await makeOffer(app, item.id);
+    const owner = generateSigner(app.umi).publicKey;
+    await expect(startPurchase(app, offer.id, app.buyer.publicKey, { recipient: owner, maxPriceUnits: parseUsdc("100") }))
+      .rejects.toThrow("over the spending cap of 100.00 USDC");
+    const start = await startPurchase(app, offer.id, app.buyer.publicKey, { recipient: owner, maxPriceUnits: parseUsdc("150") });
+    expect(start.message).toContain(`goes to ${owner}`);
+
+    // Unsigned by the agent, or someone else's transaction: refused.
+    await expect(submitPurchase(app, start.order.id, start.transaction)).rejects.toThrow("isn't fully signed");
+    const other = await startPurchase(app, offer.id, app.buyer.publicKey);
+    const tx = app.umi.transactions.deserialize(Buffer.from(other.transaction, "base64"));
+    const otherSigned = Buffer.from(app.umi.transactions.serialize(await signTransaction(tx, [app.buyer]))).toString("base64");
+    await expect(submitPurchase(app, start.order.id, otherSigned)).rejects.toThrow("isn't this order's purchase");
+
+    const mine = app.umi.transactions.deserialize(Buffer.from(start.transaction, "base64"));
+    const signed = Buffer.from(app.umi.transactions.serialize(await signTransaction(mine, [app.buyer]))).toString("base64");
+    await submitPurchase(app, start.order.id, signed);
+    const paid = await refreshOrder(app, start.order.id);
+    expect(paid.status).toBe("paid");
+    expect(app.local.asset(item.asset!).owner).toBe(owner);
   });
 
   it("adds seller risk for a new shop with no sales", async () => {

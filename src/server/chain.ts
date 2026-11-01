@@ -15,6 +15,8 @@ export interface ChainPort {
   findByReference(reference: string): Promise<FoundTx[]>;
   /** Sends a builder whose signers are all present; returns the base58 signature once confirmed. */
   send(builder: TransactionBuilder): Promise<string>;
+  /** Sends a transaction someone else signed (base64); returns the signature once confirmed. */
+  sendSigned(base64: string): Promise<string>;
 }
 
 export class RpcChain implements ChainPort {
@@ -36,6 +38,17 @@ export class RpcChain implements ChainPort {
 
   async send(builder: TransactionBuilder): Promise<string> {
     const { signature, result } = await builder.sendAndConfirm(this.umi, { confirm: { commitment: "confirmed" } });
+    if (result.value.err) throw new Error(`transaction failed: ${JSON.stringify(result.value.err)}`);
+    return bs58.encode(signature);
+  }
+
+  async sendSigned(base64: string): Promise<string> {
+    const tx = this.umi.transactions.deserialize(Buffer.from(base64, "base64"));
+    const signature = await this.umi.rpc.sendTransaction(tx, { commitment: "confirmed" });
+    const result = await this.umi.rpc.confirmTransaction(signature, {
+      strategy: { type: "blockhash", ...(await this.umi.rpc.getLatestBlockhash({ commitment: "confirmed" })) },
+      commitment: "confirmed",
+    });
     if (result.value.err) throw new Error(`transaction failed: ${JSON.stringify(result.value.err)}`);
     return bs58.encode(signature);
   }

@@ -57,6 +57,18 @@ Work in progress, devnet only. Live at https://verichainx-sol.vercel.app.
   to their own catalogue and prices. The shopper's agent checks each pitch, notes whether replies hold up against the
   shop's registered items, and answers the shopper. With `DEMO_COPIER=1` a copier's agent pitches cheap copies, and the
   checks catch them. Conversations have shareable pages (`/c/:id`).
+- Real stores next to the makers: the shopper's agent searches Shopify's Global Catalog (`SHOPIFY_CATALOG=1`) and
+  checks each store itself: own domain and its age (RDAP), refund policy, reviews, replica and brand-copy wording, and
+  dropship signs ("Ships From" options, supplier apps, default vendor, supplier boilerplate, overseas or slow
+  delivery, inflated markdowns). Store items are bought on the store's own checkout; there's no NFT.
+- A 0–100 scorecard on every result: authentic 30%, seller 25%, quality 25%, value 10%, delivery 10%. Anything to
+  avoid is capped at 20; the score ranks within a label and never lifts one.
+- MCP server for other developers' agents (`/api/mcp`, Streamable HTTP, 30 calls a minute per IP, set up at
+  `/developers`): `find_products`, `check_product_page`, `verify_item`, `verify_offer_signature`, `prepare_purchase`,
+  `buy_with_agent_wallet`, `send_transaction`, `order_status`. A bot can pay from its own wallet under a spending cap,
+  with the NFT going to its owner; only that order's exact purchase is relayed. `scripts/agent-buy.mts` is a whole bot.
+- Test USDC faucet on devnet (`POST /api/faucet`), and orders marked shipped and delivered by the seller, each step an
+  order memo on Solana.
 - Every agent run is saved: a shareable page per run (`/runs/:id`) and a list (`/runs`).
 - A local demo on an in-process Solana VM (`npm run demo:local`), and a browser test on it (`npm run e2e`).
 - Devnet setup and an end-to-end devnet purchase script. The first run, on 2026-10-29, was

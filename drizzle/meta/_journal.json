@@ -43,6 +43,13 @@
       "when": 1793275595727,
       "tag": "0005_conversations",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793538244295,
+      "tag": "0006_agent_wallet",
+      "breakpoints": true
     }
   ]
 }

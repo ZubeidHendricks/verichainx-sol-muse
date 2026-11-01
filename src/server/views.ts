@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import QRCode from "qrcode";
 
 import { hashRecord } from "@/lib/canonical";
@@ -14,6 +14,7 @@ import { NotFound, Refused, checkOffer, heldItems, loadOffer, manages } from "./
 import { schema } from "./db";
 import { refreshOrder } from "./pay";
 import { shopClaims } from "./shopify";
+import type { Scorecard } from "./stores/scorecard";
 
 /** Read models for the web pages. Route handlers and pages share these, so both say the same thing. */
 
@@ -119,13 +120,27 @@ export async function merchantBoard(app: App, wallet: string | null) {
         id: i.id, title: i.title, price: formatUsdc(i.priceUnits), status: i.status, asset: i.asset,
       })),
       claims: m.shopifyShop ? await shopClaims(app, m.id) : [],
+      orders: await shopOrders(app, m.id),
     }))),
     held: wallet ? (await heldItems(app, wallet)).map((i) => ({ id: i.id, title: i.title, asset: i.asset, paid: formatUsdc(i.priceUnits) })) : [],
   };
 }
 
+/** Orders on this shop's own offers (not items it later resold), past pending, newest first. */
+async function shopOrders(app: App, merchantId: string) {
+  const rows = await app.db.select({ o: schema.orders, title: schema.items.title, price: schema.offers.priceUnits })
+    .from(schema.orders).innerJoin(schema.offers, eq(schema.orders.offerId, schema.offers.id))
+    .innerJoin(schema.items, eq(schema.offers.itemId, schema.items.id))
+    .where(and(eq(schema.offers.merchantId, merchantId), ne(schema.orders.status, "pending")))
+    .orderBy(desc(schema.orders.createdAt)).limit(20);
+  return rows.map(({ o, title, price }) => ({ id: o.id, title, price: formatUsdc(price), status: o.status,
+    buyer: o.recipientWallet ?? o.buyerWallet }));
+}
+
 /** What /api/agent/shop returns: the run, with each result marked if this app holds the offer. */
-export type ShopReply = Omit<ShopResult, "results"> & { results: (ShopResult["results"][number] & { local: boolean })[] };
+export type ShopReply = Omit<ShopResult, "results"> & {
+  results: (ShopResult["results"][number] & { local: boolean; scorecard?: Scorecard })[];
+};
 
 export async function saveRun(app: App, message: string, reply: ShopReply): Promise<string> {
   const id = newId("run");

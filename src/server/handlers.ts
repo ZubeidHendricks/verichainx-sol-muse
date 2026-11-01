@@ -4,6 +4,8 @@ import { attribute, ownershipCheck } from "@/lib/solana/items";
 import { TemplateMismatch } from "@/lib/solana/purchase";
 
 import type { App } from "./app";
+import { fundTestUsdc } from "./faucet";
+import { clientIp, rateLimited } from "./http";
 import { NotFound, Refused, checkOffer, loadOffer } from "./catalog";
 import { refreshOrder, startPurchase } from "./pay";
 import { chatTurn } from "./chat";
@@ -177,6 +179,8 @@ export function wellKnown(app: App): Response {
     name: "VeriChainX Sol",
     agent_endpoint: `${base}/agent/v1/offers`,
     verify_endpoint: `${base}/api/verify/{asset}`,
+    mcp_endpoint: `${base}/api/mcp`,
+    ...(app.config.cluster === "mainnet" ? {} : { faucet_endpoint: `${base}/api/faucet` }),
     chains: [solanaChain(app.config.cluster)],
     currencies: [{ symbol: "USDC", chain: solanaChain(app.config.cluster), mint: app.config.usdcMint }],
     settlement_key: app.keys.settlement.publicKey,
@@ -291,4 +295,16 @@ export async function ordersPaidPost(app: App, req: Request): Promise<Response> 
     if (!(e instanceof Refused)) throw e; // a 5xx makes Shopify retry; an unknown store won't get better
   }
   return new Response(null, { status: 200 });
+}
+
+/** POST /api/faucet { account }: test USDC on devnet, a few times an hour per address and per IP. */
+export async function faucetPost(app: App, req: Request): Promise<Response> {
+  return guarded(app, async () => {
+    const account = await readAccount(req);
+    if (typeof account !== "string") throw new Refused("send { account: <Solana address> }");
+    if (rateLimited(`faucet:${clientIp(req)}`, 3, 3_600_000) || rateLimited(`faucet:${account}`, 2, 3_600_000)) {
+      return json(app, { message: "That's enough test USDC for now; try again in an hour." }, 429);
+    }
+    return json(app, { account, ...(await fundTestUsdc(app, account)) });
+  });
 }

@@ -11,7 +11,7 @@ import { domainProof } from "@/server/catalog";
 import { shopifyConfig } from "@/server/shopify";
 import { merchantBoard } from "@/server/views";
 
-import { checkDomain, importShopify, setListing } from "./actions";
+import { checkDomain, importShopify, markOrder, setListing } from "./actions";
 import { ActionButton, AddItemForm, AddShopForm, ResellForm } from "./forms";
 import { SignIn } from "./sign-in";
 
@@ -105,6 +105,30 @@ async function Board({ searchParams }: { searchParams: Promise<Search> }) {
                             )}
                             {i.status === "listed" && (
                               <ActionButton run={setListing.bind(null, i.id, "delist")} label="Delist" busy="Delisting…" itemId={i.id} address={address} chain={chain} />
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {m.orders.length > 0 && (
+                <div className="table-scroll">
+                  <table>
+                    <thead><tr><th>Order</th><th>Item</th><th>Status</th><th /></tr></thead>
+                    <tbody>
+                      {m.orders.map((o) => (
+                        <tr key={o.id}>
+                          <td><Link className="mono" href={`/orders/${o.id}`}>{o.id}</Link></td>
+                          <td>{o.title} <span className="small muted">· {o.price} USDC</span></td>
+                          <td><span className={`pill ${o.status}`}>{o.status}</span></td>
+                          <td>
+                            {o.status === "paid" && (
+                              <ActionButton run={markOrder.bind(null, o.id, "shipped")} label="Mark shipped" busy="Anchoring…" address={address} chain={chain} />
+                            )}
+                            {o.status === "shipped" && (
+                              <ActionButton run={markOrder.bind(null, o.id, "delivered")} label="Mark delivered" busy="Anchoring…" address={address} chain={chain} />
                             )}
                           </td>
                         </tr>

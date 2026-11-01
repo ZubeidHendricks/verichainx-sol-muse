@@ -149,4 +149,10 @@ export class SvmChainPort implements ChainPort {
     this.chain.submit(tx);
     return bs58.encode(tx.signatures[0]);
   }
+
+  async sendSigned(base64: string) {
+    const tx = this.chain.umi.transactions.deserialize(Buffer.from(base64, "base64"));
+    this.chain.submit(tx);
+    return bs58.encode(tx.signatures[0]);
+  }
 }

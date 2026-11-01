@@ -2,13 +2,16 @@ import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 
 import type { Turn } from "@/lib/envelope";
 
-import { localSource, peerSources, shopWithModels, type ShopResult } from "./agents/buyer";
+import { conversationBudget, localSource, peerSources, shopWithModels, type ShopResult } from "./agents/buyer";
 import { copierSource } from "./agents/copier";
 import type { Usage } from "./agents/llm";
 import type { Recommendation } from "./agents/verify";
 import { newId, type App } from "./app";
 import { NotFound } from "./catalog";
 import { schema } from "./db";
+import { formatPrice } from "./stores/catalog";
+import { makerScorecard } from "./stores/scorecard";
+import { searchStores, type StoreResult } from "./stores/search";
 import { saveRun, type ShopReply } from "./views";
 
 /**
@@ -22,7 +25,9 @@ type Result = ShopReply["results"][number];
 export type ChatMessage =
   | { kind: "shopper"; text: string }
   | { kind: "rep"; shop: string; verified: boolean; known: boolean; text: string; offers: Result[]; note?: string }
-  | { kind: "agent"; text: string; engine?: string; usage?: Usage; notes?: string[]; trace?: ShopResult["trace"]; runId?: string };
+  | { kind: "agent"; text: string; engine?: string; usage?: Usage; notes?: string[]; trace?: ShopResult["trace"]; runId?: string }
+  /** Real stores the shopper's agent found and checked itself (Shopify's catalog); they have no agent here. */
+  | { kind: "stores"; results: StoreResult[] };
 
 const ORDER: Record<Recommendation, number> = { recommended: 0, caution: 1, avoid: 2, excluded: 3 };
 
@@ -65,9 +70,22 @@ function threadFor(out: ShopReply): ChatMessage[] {
 }
 
 function turnsFor(text: string, thread: ChatMessage[]): Turn[] {
-  return [{ role: "shopper", text }, ...thread.map((m): Turn => m.kind === "rep"
-    ? { role: "rep", from: m.shop, text: m.text.slice(0, 1000) }
-    : { role: m.kind === "agent" ? "agent" : "shopper", text: m.text.slice(0, 1000) })];
+  return [{ role: "shopper", text }, ...thread.map((m): Turn => {
+    if (m.kind === "rep") return { role: "rep", from: m.shop, text: m.text.slice(0, 1000) };
+    if (m.kind === "stores") {
+      return { role: "agent", text: `Stores I found: ${m.results.map((r) => `${r.product.title} from ${r.product.store.public_domain}, `
+        + `${formatPrice(r.product.price_minor, r.product.currency)}, ${r.recommendation}`).join("; ")}`.slice(0, 1000) };
+    }
+    return { role: m.kind === "agent" ? "agent" : "shopper", text: m.text.slice(0, 1000) };
+  })];
+}
+
+/** One sentence on the stores, added to the agent's answer by code so it always matches the checks. */
+function storesSentence(stores: StoreResult[]): string {
+  if (!stores.length) return "";
+  const best = stores[0];
+  return ` I also checked ${stores.length} Shopify store${stores.length === 1 ? "" : "s"}: the best is ${best.product.title} from `
+    + `${best.product.store.public_domain} (${best.recommendation}, ${best.scorecard.overall}/100), bought on the store's own checkout.`;
 }
 
 /** One shopper message: runs the turn and saves it to the conversation (a new one if `conversationId` is null). */
@@ -89,7 +107,11 @@ export async function chatTurn(app: App, conversationId: string | null, text: st
     ...(process.env.DEMO_COPIER === "1" ? [copierSource(app)] : []),
   ];
   const context = priorTurns.length ? priorTurns : turnsFor("", priorMessages).slice(1);
-  const result = await shopWithModels(app, text, sources, app.agentModels ?? [], context);
+  const budget = conversationBudget(text, context);
+  const [result, stores] = await Promise.all([
+    shopWithModels(app, text, sources, app.agentModels ?? [], context),
+    searchStores(app, text, budget ? Number(budget) : undefined),
+  ]);
 
   // Offers this app holds get a pay page; ones from other apps' agents are shown but paid there.
   const ids = result.results.map((r) => r.offer?.offer_id).filter((id): id is string => Boolean(id));
@@ -99,12 +121,19 @@ export async function chatTurn(app: App, conversationId: string | null, text: st
     ? { prompt_tokens: (result.usage?.prompt_tokens ?? 0) + repUsage.prompt_tokens,
       completion_tokens: (result.usage?.completion_tokens ?? 0) + repUsage.completion_tokens }
     : undefined;
-  const reply: ShopReply = { ...result, usage, results: result.results.map((r) => ({ ...r, local: here.has(r.offer?.offer_id ?? "") })) };
+  // Maker prices are USDC; store prices in USD compare with them for value.
+  const peerCents = [...result.results.map((r) => Math.round(Number(r.offer?.price ?? 0) * 100)).filter(Boolean),
+    ...stores.filter((s) => s.product.currency === "USD").map((s) => s.product.price_minor)];
+  const reply: ShopReply = { ...result, usage, results: result.results.map((r) => ({
+    ...r, local: here.has(r.offer?.offer_id ?? ""),
+    scorecard: makerScorecard(r, r.final, peerCents.filter((c) => c !== Math.round(Number(r.offer?.price ?? 0) * 100))),
+  })) };
   const runId = await saveRun(app, text, reply);
 
   const thread = threadFor(reply);
-  const agent: ChatMessage = { kind: "agent", text: reply.answer, engine: reply.engine, usage, notes: reply.notes, trace: reply.trace, runId };
-  const added: ChatMessage[] = [{ kind: "shopper", text }, ...thread, agent];
+  const agent: ChatMessage = { kind: "agent", text: reply.answer + storesSentence(stores), engine: reply.engine, usage,
+    notes: reply.notes, trace: reply.trace, runId };
+  const added: ChatMessage[] = [{ kind: "shopper", text }, ...thread, ...(stores.length ? [{ kind: "stores", results: stores } as const] : []), agent];
   const messages = [...priorMessages, ...added];
   const turns = [...context, ...turnsFor(text, [...thread, agent])].slice(-16);
 
