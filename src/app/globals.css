@@ -427,3 +427,27 @@ label > .fiat { margin-left: 4px; }
 .request .budget .fiat { position: absolute; right: 11px; bottom: 13px; margin: 0; pointer-events: none; }
 .flow { margin-top: 40px !important; }
 .start-board { margin-top: 32px !important; }
+
+/* Home: the shopper's hero, with the company path beside it as a small board. */
+.home-top { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 48px; align-items: end; }
+@media (max-width: 900px) { .home-top { grid-template-columns: 1fr; gap: 28px; } }
+.hero-marks { border-top: 0; padding: 0; margin-top: 18px; }
+.hero-marks .mark { font-size: 12px; padding: 3px 8px; }
+.company-card {
+  display: block; text-decoration: none; background: var(--card); border-radius: 10px; padding: 18px 20px;
+  box-shadow: 0 0 0 1px var(--rule); transition: box-shadow 150ms, transform 150ms;
+}
+.company-card:hover { box-shadow: 0 0 0 1.5px var(--pay), 0 8px 24px -12px color-mix(in srgb, var(--pay) 40%, transparent); transform: translateY(-2px); }
+.company-card .eyebrow { margin: 0; }
+.company-card .cc-title { font-family: var(--display); font-stretch: 112%; font-weight: 800; font-size: 20px; line-height: 1.15; margin: 6px 0 14px; }
+.company-card .small { color: var(--ink-soft); margin: 12px 0 10px; }
+.cc-go { font-weight: 600; color: var(--pay); font-size: 14px; }
+.mini-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.mini-board span { display: grid; gap: 4px; align-content: start; background: var(--fog-deep); border-radius: 5px; padding: 6px; min-height: 58px; }
+.mini-board i { display: block; height: 12px; border-radius: 3px; background: var(--card); border-left: 3px solid var(--rule); }
+.mini-board i.pick { border-left-color: var(--pay); }
+.mini-board i.done { border-left-color: var(--ok); }
+@media (prefers-reduced-motion: no-preference) {
+  .company-card:hover .mini-board i.pick { animation: hop 900ms ease-in-out infinite alternate; }
+}
+@keyframes hop { to { transform: translateY(-3px); } }
