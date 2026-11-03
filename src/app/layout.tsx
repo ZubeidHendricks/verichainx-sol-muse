@@ -10,7 +10,7 @@ const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"
 
 export const metadata: Metadata = {
   title: { default: "VeriChainX", template: "%s · VeriChainX" },
-  description: "Ask an agent to shop independent makers. It checks who holds each item's ownership NFT on Solana before you pay.",
+  description: "Ask a Muse Spark agent to shop independent makers. It checks who holds each item's ownership NFT on Solana before you pay.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

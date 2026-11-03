@@ -1,6 +1,7 @@
-# VeriChainX Sol
+# VeriChainX for Muse
 
-Verified sellers, and ownership that moves with payment, for AI shopping agents on Solana.
+Verified sellers, and ownership that moves with payment, for AI shopping agents: Meta's Muse Spark does the
+shopping, Solana holds the proof.
 
 Shopping is a conversation between agents. Each shop's sales agent greets the shopper and pitches its items; the
 shopper's own agent checks every pitch against the chain (seller, ownership, origin record, price, photos) and marks
@@ -8,7 +9,21 @@ it recommended, caution or avoid. The shopper then buys with one wallet signatur
 protocol fee, moves the item's Metaplex Core NFT to the buyer and records the order with a memo.
 Either all of it lands or none of it does.
 
-Built for the Meta Global AI Developer Hackathon: the shopper's agent runs on Muse Spark (Meta Model API).
+Built for the Meta Global AI Developer Hackathon. Muse Spark (Meta Model API) runs:
+
+- **the shopper's agent**: it picks the tool calls (ask the shops, verify each offer, rank) and answers the shopper.
+  Code verifies every offer and caps its recommendations, so the model can't promote anything the checks rule out;
+- **each shop's sales agent**: it pitches from its own catalogue and answers the shopper's questions, in signed
+  messages (the opening welcome is a fixed template);
+- **the photo check** (`PHOTO_MODEL=muse`): a listing photo that isn't one of the item's registered photos is compared
+  with them; "different item" adds risk, "same" never clears a failed check.
+
+Groq is the fallback when a Muse Spark turn fails or the day's `MODEL_CALLS_PER_DAY` is used up, then built-in rules.
+The page names the engine that answered each turn. Other agents, Muse connectors included, use the same checks over MCP
+(`/api/mcp`), with each tool marked read or write.
+
+This is a copy of VeriChainX Sol (`verichainx-sol`, the Solana build), made on 3 November 2026 to be the Meta entry;
+see [`PRIOR_WORK.md`](PRIOR_WORK.md).
 
 The full spec is in [`docs/SPEC.md`](docs/SPEC.md). Prior work and what came from where is in
 [`PRIOR_WORK.md`](PRIOR_WORK.md).

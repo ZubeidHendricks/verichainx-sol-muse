@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { getApp } from "@/server/app";
 import { recentRuns } from "@/server/views";
+import { engineLabel } from "@/lib/engine";
 
 export const metadata: Metadata = { title: "Agent runs" };
 
@@ -35,7 +36,7 @@ async function Runs() {
           {runs.map((r) => (
             <tr key={r.id}>
               <td><Link href={`/runs/${r.id}`}>{r.message}</Link></td>
-              <td className="mono">{r.engine}</td>
+              <td className="mono">{engineLabel(r.engine)}</td>
               <td>{r.offers}</td>
               <td>{r.avoided}</td>
               <td>{r.tokens ?? "–"}</td>

@@ -4,6 +4,7 @@ import type { ChatMessage } from "@/server/chat";
 import { formatPrice } from "@/server/stores/catalog";
 
 import { Tag } from "./tag";
+import { engineLabel } from "@/lib/engine";
 
 const STEP: Record<string, string> = {
   discover_merchants: "Sent your request to the shop agents",
@@ -70,7 +71,7 @@ function Message({ m, index }: { m: ChatMessage; index: number }) {
   const scripted = m.engine === "scripted";
   return (
     <div className="note">
-      <p className="who">Your agent{m.engine && <span className="engine">{scripted ? "built-in rules" : m.engine}</span>}</p>
+      <p className="who">Your agent{m.engine && <span className="engine">{engineLabel(m.engine)}</span>}</p>
       <p>{m.text}</p>
       {scripted && <p className="small muted">No AI model answered, so built-in rules ran the steps. The checks are the same.</p>}
       {m.notes?.map((n) => <p key={n} className="small muted">{n}</p>)}

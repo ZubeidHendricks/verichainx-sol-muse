@@ -1,5 +1,9 @@
 # Prior work
 
+This repository is a copy of VeriChainX Sol (`verichainx-sol`), made on 3 November 2026 with its full git history
+to be the Meta Global AI Developer Hackathon entry (building period 27 October – 4 November 2026). Every commit
+below was made during that period; the Muse-specific changes are the commits after the copy.
+
 VeriChainX Sol is a new codebase, started October 28, 2026. No code was copied from the projects below.
 It re-implements some of their ideas in TypeScript on Solana.
 

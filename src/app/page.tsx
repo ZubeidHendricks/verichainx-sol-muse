@@ -10,10 +10,10 @@ export default function Home() {
   return (
     <>
       <section className="hero">
-        <p className="eyebrow">Agent-to-agent shopping · Solana</p>
+        <p className="eyebrow">Agent-to-agent shopping · Muse Spark · Solana</p>
         <h1 className="display">Shops&apos; agents sell. Yours checks.</h1>
         <p>
-          Every shop here has a sales agent that will pitch to you. Your own agent works only for you: it checks each
+          Every shop here has a sales agent that will pitch to you. Your own agent, running on Meta&apos;s Muse Spark, works only for you: it checks each
           pitch on Solana (who really holds the item&apos;s ownership NFT, where it was made, the seller) before you pay.
           Payment and the NFT change hands in one transaction.
         </p>

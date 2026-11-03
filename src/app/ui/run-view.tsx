@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ShopReply } from "@/server/views";
 
 import { Tag } from "./tag";
+import { engineLabel } from "@/lib/engine";
 
 const STEP: Record<string, string> = {
   discover_merchants: "Found shops",
@@ -49,7 +50,7 @@ export function RunView({ reply, runId }: { reply: ShopReply; runId?: string }) 
           })}
         </ol>
         <p className="usage">
-          Engine: {reply.engine}
+          Engine: {engineLabel(reply.engine)}
           {reply.usage && <><br />{reply.usage.prompt_tokens + reply.usage.completion_tokens} tokens</>}
         </p>
         {reply.notes?.map((n) => <p key={n}>{n}</p>)}
