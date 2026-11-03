@@ -113,7 +113,8 @@ before running `devnet:seed` or `scripts/db-peek.mts`.
 ## Deploy
 
 On Vercel with Neon Postgres: the app uses `DATABASE_URL` when it's set (PGlite otherwise). Set the variables from
-`.env.example` on the project (not `MODEL_API_KEY` on a public site: anyone can run the agent), then:
+`.env.example` on the project (on a public site, set `MODEL_CALLS_PER_DAY` with `MODEL_API_KEY`: anyone can run the agent, and past the cap it
+falls back to Groq, then the scripted engine), then:
 
 ```bash
 DATABASE_URL=<unpooled url> npx tsx scripts/db-migrate.mts

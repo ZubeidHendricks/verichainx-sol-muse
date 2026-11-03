@@ -112,3 +112,10 @@ export const conversations = pgTable("conversations", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Paid model calls per UTC day and provider, so a public site can't run past MODEL_CALLS_PER_DAY. */
+export const modelUsage = pgTable("model_usage", {
+  day: text("day").notNull(),
+  provider: text("provider").notNull(),
+  calls: integer("calls").notNull().default(0),
+}, (t) => [uniqueIndex("model_usage_day_provider_idx").on(t.day, t.provider)]);

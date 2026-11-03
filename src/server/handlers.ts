@@ -190,6 +190,8 @@ export function wellKnown(app: App): Response {
 
 /** POST /api/agent/shop {message}: the shopper's agent on Muse Spark or Groq, or the scripted engine without a key. */
 export async function shopPost(app: App, req: Request): Promise<Response> {
+  // Each turn runs several model calls; per instance, so it stops a burst rather than setting a quota.
+  if (rateLimited(`shop:${clientIp(req)}`, 10)) return json(app, { error: "Too many requests; slow down" }, 429);
   return guarded(app, async () => {
     const { message, conversation_id: cid } = (await req.json().catch(() => ({}))) as { message?: unknown; conversation_id?: unknown };
     if (typeof message !== "string" || !message.trim() || message.length > 500) throw new Refused("message is required");

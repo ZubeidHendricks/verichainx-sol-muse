@@ -50,6 +50,13 @@
       "when": 1793538244295,
       "tag": "0006_agent_wallet",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793683068651,
+      "tag": "0007_model_usage",
+      "breakpoints": true
     }
   ]
 }

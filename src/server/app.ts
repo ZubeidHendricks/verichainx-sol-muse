@@ -5,6 +5,7 @@ import type { KeypairSigner, Umi } from "@metaplex-foundation/umi";
 import type { Cluster } from "@/lib/chains";
 import { signerFromSecret, makeUmi } from "@/lib/solana/umi";
 
+import { capMuse } from "./agents/budget";
 import { modelsFromEnv, visionModelFromEnv, type ChatModel } from "./agents/llm";
 import { RpcChain, type ChainPort } from "./chain";
 import { openDb, openPostgres, type Db } from "./db";
@@ -64,8 +65,11 @@ export function getApp(): Promise<App> {
 async function rpcApp(): Promise<App> {
   const umi = makeUmi(env("SOLANA_RPC_URL"));
   const appUrl = env("APP_URL").replace(/\/$/, "");
+  const db = process.env.DATABASE_URL ? await openPostgres(process.env.DATABASE_URL) : await openDb(process.env.PGLITE_DIR ?? ".data/pglite");
+  const cap = capMuse(db, Number(process.env.MODEL_CALLS_PER_DAY) || undefined);
+  const photoModel = visionModelFromEnv();
   return {
-    db: process.env.DATABASE_URL ? await openPostgres(process.env.DATABASE_URL) : await openDb(process.env.PGLITE_DIR ?? ".data/pglite"),
+    db,
     chain: new RpcChain(umi),
     umi,
     keys: {
@@ -83,9 +87,9 @@ async function rpcApp(): Promise<App> {
       offerTtlMinutes: 15,
     },
     now: () => new Date(),
-    agentModels: modelsFromEnv(),
+    agentModels: modelsFromEnv().map(cap),
     images: httpImageLoader(appUrl),
-    photoModel: visionModelFromEnv(),
+    photoModel: photoModel && cap(photoModel),
     stores: process.env.SHOPIFY_CATALOG === "1" ? liveStoreSearch : undefined,
   };
 }
