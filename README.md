@@ -86,6 +86,16 @@ Work in progress, devnet only. Live at https://verichainx-sol.vercel.app.
   with the NFT going to its owner; only that order's exact purchase is relayed. `scripts/agent-buy.mts` is a whole bot.
 - Test USDC faucet on devnet (`POST /api/faucet`), and orders marked shipped and delivered by the seller, each step an
   order memo on Solana.
+- Procurement for companies (`/teams`): a company board with its own devnet wallet (10,000 test USDC) and a spending
+  policy (limit per order and per month, verified offers only). A member asks the procurement agent (Muse Spark) for a
+  quantity, say 40 woven totes on a 6,000 USDC budget. It sources from the shops here and from Shopify stores, every
+  offer gets the usual checks, and code checks each against the policy and the shop's stock. Options that pass go to
+  the shortlist; the team votes must-have, nice-to-have or skip, with a support score and a flag when the team is
+  split. Cards can be dragged between Sourced and Shortlist, and the board refreshes itself so teammates' votes appear.
+  Only an approver can pay. Code re-checks the policy at that moment. A **lot** NFT for the quantity is minted already
+  listed, carrying the item's origin hash, and the company wallet buys it in the usual atomic transaction. The units
+  come off the shop's stock when the payment confirms. Shops opt into bulk orders by giving an item a stock count.
+  Teammates join by invite link (member or approver).
 - Every agent run is saved: a shareable page per run (`/runs/:id`) and a list (`/runs`).
 - A local demo on an in-process Solana VM (`npm run demo:local`), and a browser test on it (`npm run e2e`).
 - Devnet setup and an end-to-end devnet purchase script. The first run, on 2026-10-29, was

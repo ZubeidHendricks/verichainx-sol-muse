@@ -155,4 +155,8 @@ export class SvmChainPort implements ChainPort {
     this.chain.submit(tx);
     return bs58.encode(tx.signatures[0]);
   }
+
+  async tokenBalance(owner: string, mint: string) {
+    return this.chain.tokenBalance(owner, mint);
+  }
 }

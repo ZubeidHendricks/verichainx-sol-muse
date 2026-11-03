@@ -1,6 +1,6 @@
 import { publicKey, type TransactionBuilder, type Umi } from "@metaplex-foundation/umi";
 import { fetchAsset, type AssetV1 } from "@metaplex-foundation/mpl-core";
-import { SPL_MEMO_PROGRAM_ID } from "@metaplex-foundation/mpl-toolbox";
+import { SPL_MEMO_PROGRAM_ID, findAssociatedTokenPda, safeFetchToken } from "@metaplex-foundation/mpl-toolbox";
 import bs58 from "bs58";
 
 /** A transaction found by its Solana Pay reference key. */
@@ -17,10 +17,17 @@ export interface ChainPort {
   send(builder: TransactionBuilder): Promise<string>;
   /** Sends a transaction someone else signed (base64); returns the signature once confirmed. */
   sendSigned(base64: string): Promise<string>;
+  /** A wallet's balance of a token, in base units; 0 when it has no token account. */
+  tokenBalance(owner: string, mint: string): Promise<bigint>;
 }
 
 export class RpcChain implements ChainPort {
   constructor(private readonly umi: Umi) {}
+
+  async tokenBalance(owner: string, mint: string): Promise<bigint> {
+    const ata = findAssociatedTokenPda(this.umi, { owner: publicKey(owner), mint: publicKey(mint) })[0];
+    return (await safeFetchToken(this.umi, ata, { commitment: "confirmed" }))?.amount ?? 0n;
+  }
 
   async getAsset(asset: string): Promise<AssetV1 | null> {
     try {

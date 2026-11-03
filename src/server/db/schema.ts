@@ -32,6 +32,11 @@ export const items = pgTable("items", {
   registrationHash: text("registration_hash"),
   originSig: text("origin_sig"),
   shopifyProductId: text("shopify_product_id"), // the product it was registered from, for orders/paid
+  /** Units the shop can make or supply; null for a one-of-a-kind item. Bulk orders buy a lot of these. */
+  stock: integer("stock"),
+  /** Set on a lot: the item it's a quantity of. A lot has its own NFT, minted when a company orders it. */
+  lotOf: text("lot_of"),
+  quantity: integer("quantity").notNull().default(1),
   status: text("status", { enum: ["draft", "listed", "sold", "delisted"] }).notNull().default("draft"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -119,3 +124,78 @@ export const modelUsage = pgTable("model_usage", {
   provider: text("provider").notNull(),
   calls: integer("calls").notNull().default(0),
 }, (t) => [uniqueIndex("model_usage_day_provider_idx").on(t.day, t.provider)]);
+
+/** A company buying through its procurement agent: its devnet wallet (sealed, like a vault) and spending policy. */
+export type Policy = {
+  per_order_usdc: string; monthly_usdc: string;
+  /** Only offers the checks mark recommended (verified seller, NFT held and listed, origin record). */
+  verified_only: boolean;
+};
+
+export const companies = pgTable("companies", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  wallet: text("wallet").notNull(),
+  walletSecretSealed: text("wallet_secret_sealed").notNull(),
+  policy: jsonb("policy").$type<Policy>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const members = pgTable("members", {
+  id: text("id").primaryKey(),
+  companyId: text("company_id").notNull().references(() => companies.id),
+  name: text("name").notNull(),
+  role: text("role", { enum: ["approver", "member"] }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("members_company_idx").on(t.companyId)]);
+
+/** A purchase request a member gave the procurement agent, and what the agent said. */
+export const requests = pgTable("requests", {
+  id: text("id").primaryKey(),
+  companyId: text("company_id").notNull().references(() => companies.id),
+  memberId: text("member_id").notNull().references(() => members.id),
+  text: text("text").notNull(),
+  quantity: integer("quantity").notNull(),
+  budgetUnits: bigint("budget_units", { mode: "bigint" }).notNull(),
+  answer: text("answer").notNull(),
+  engine: text("engine").notNull(),
+  runId: text("run_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("requests_company_idx").on(t.companyId)]);
+
+export type PolicyCheck = { rule: string; ok: boolean; detail: string };
+export type CardEvent = { at: string; who: string; what: string; sig?: string };
+
+/** One sourced option on the company's board: Sourced → Shortlist → Approved → Ordered (or Rejected). */
+export const cards = pgTable("cards", {
+  id: text("id").primaryKey(),
+  companyId: text("company_id").notNull().references(() => companies.id),
+  requestId: text("request_id").notNull().references(() => requests.id),
+  column: text("column", { enum: ["sourced", "shortlist", "approved", "ordered", "rejected"] }).notNull().default("sourced"),
+  kind: text("kind", { enum: ["maker", "store"] }).notNull(),
+  title: text("title").notNull(),
+  seller: text("seller").notNull(),
+  image: text("image"),
+  itemId: text("item_id"),
+  productUrl: text("product_url"),
+  unitPrice: text("unit_price").notNull(), // "129 USDC", or the store's price in its currency
+  unitUnits: bigint("unit_units", { mode: "bigint" }), // USDC base units, makers only
+  quantity: integer("quantity").notNull(),
+  available: integer("available"), // units the shop has, when known
+  label: text("label").notNull(),
+  reasons: jsonb("reasons").$type<string[]>().notNull().default([]),
+  evidence: jsonb("evidence").notNull().default([]),
+  scorecard: jsonb("scorecard"),
+  policy: jsonb("policy").$type<PolicyCheck[]>().notNull().default([]),
+  orderId: text("order_id"),
+  orderedAt: timestamp("ordered_at", { withTimezone: true }),
+  history: jsonb("history").$type<CardEvent[]>().notNull().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("cards_company_idx").on(t.companyId)]);
+
+export const votes = pgTable("votes", {
+  cardId: text("card_id").notNull().references(() => cards.id),
+  memberId: text("member_id").notNull().references(() => members.id),
+  vote: text("vote", { enum: ["must_have", "nice_to_have", "skip"] }).notNull(),
+  at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("votes_card_member_idx").on(t.cardId, t.memberId)]);

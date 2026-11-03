@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { caip10, solanaChain } from "@/lib/chains";
 import { needBody, newEnvelope, signEnvelope, verifyEnvelope, type Envelope, type NeedBody } from "@/lib/envelope";
@@ -99,7 +99,7 @@ export async function answerNeed(app: App, need: Envelope, opts: RepOptions = {}
 
   const rows = await app.db.select({ item: schema.items, merchant: schema.merchants })
     .from(schema.items).innerJoin(schema.merchants, eq(schema.items.merchantId, schema.merchants.id))
-    .where(and(eq(schema.items.status, "listed")));
+    .where(and(eq(schema.items.status, "listed"), isNull(schema.items.lotOf)));
 
   const byMerchant = new Map<string, { merchant: Merchant; items: Item[] }>();
   for (const r of rows) {

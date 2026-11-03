@@ -1,5 +1,5 @@
 import { generateSigner, type KeypairSigner } from "@metaplex-foundation/umi";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 
 import { caip10, solanaChain } from "@/lib/chains";
 import { needBody, newEnvelope, signEnvelope, type Envelope } from "@/lib/envelope";
@@ -34,7 +34,7 @@ export function copierSource(app: App): OfferSource {
       const asked = [body.text, ...(body.conversation ?? []).filter((t) => t.role === "shopper").map((t) => t.text)].join(" ");
       const rows = await app.db.select({ item: schema.items, merchant: schema.merchants })
         .from(schema.items).innerJoin(schema.merchants, eq(schema.items.merchantId, schema.merchants.id))
-        .where(and(eq(schema.items.status, "listed"), isNotNull(schema.items.asset)));
+        .where(and(eq(schema.items.status, "listed"), isNotNull(schema.items.asset), isNull(schema.items.lotOf)));
       const copy = (units: bigint) => units * 55n / 100n;
       const picks = rows.filter((r) => relevance(asked, r.item) > 0 && (budget === undefined || copy(r.item.priceUnits) <= budget))
         .sort((a, b) => relevance(asked, b.item) - relevance(asked, a.item)).slice(0, 2);

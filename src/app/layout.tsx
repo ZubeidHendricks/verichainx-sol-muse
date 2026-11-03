@@ -21,6 +21,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Link href="/" className="brand">VeriChainX</Link>
           <nav aria-label="Main">
             <Link href="/">Shop</Link>
+            <Link href="/teams">Teams</Link>
             <Link href="/merchant">Sell</Link>
             <Link href="/runs">Runs</Link>
             <Link href="/developers">Developers</Link>

@@ -1,12 +1,12 @@
 import { createNoopSigner, createSignerFromKeypair, generateSigner, publicKey, signTransaction, type Signer } from "@metaplex-foundation/umi";
 import type { AssetV1 } from "@metaplex-foundation/mpl-core";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sum } from "drizzle-orm";
 
 import { hashRecord } from "@/lib/canonical";
 import { caip10, solanaChain } from "@/lib/chains";
 import { newEnvelope, signEnvelope, verifyEnvelope, type Envelope, type OfferBody } from "@/lib/envelope";
 import { formatUsdc, parseUsdc } from "@/lib/money";
-import { buildDelistItem, buildListItem, buildMerchantCollection, buildRegisterItem } from "@/lib/solana/items";
+import { buildDelistItem, buildListItem, buildMerchantCollection, buildRegisterItem, buildRegisterLot } from "@/lib/solana/items";
 
 import { newId, type App } from "./app";
 import { fingerprintPhotos } from "./photos";
@@ -163,6 +163,45 @@ export async function registerItem(app: App, merchantId: string, input: {
   await app.db.insert(schema.records).values({
     sig: originSig, kind: "origin", payload: registrationRecord(m, draft), hash: registrationHash,
   });
+  return row;
+}
+
+/** Units of an item still free to order: its stock less lots minted but not yet paid for. Null if one of a kind. */
+export async function availableUnits(app: App, item: Item): Promise<number | null> {
+  if (item.stock === null) return null;
+  const [r] = await app.db.select({ n: sum(items.quantity) }).from(items)
+    .where(and(eq(items.lotOf, item.id), eq(items.status, "listed")));
+  return Math.max(0, item.stock - Number(r?.n ?? 0));
+}
+
+/**
+ * Mints a lot of `quantity` units of an item, listed and priced at unit price × quantity, for a bulk order. It is
+ * an item of its own (and gets its own signed offer), but shoppers never see it: shop agents only pitch items.
+ */
+export async function createLot(app: App, itemId: string, quantity: number): Promise<Item> {
+  const item = await getItem(app, itemId);
+  if (item.lotOf) throw new Refused("that's already a lot");
+  if (item.status !== "listed") throw new Refused(`${item.title} isn't listed`);
+  const free = await availableUnits(app, item);
+  if (free === null) throw new Refused(`${item.title} is one of a kind, so it can't be ordered by quantity`);
+  if (!Number.isInteger(quantity) || quantity < 1) throw new Refused("quantity must be a whole number");
+  if (quantity > free) throw new Refused(`${item.title}: ${free} available, ${quantity} asked for`);
+  const m = await getMerchant(app, item.merchantId);
+  if (!m.collectionAsset || !item.registrationHash) throw new Refused("the item has no origin record");
+  const id = newId("it");
+  const asset = generateSigner(app.umi);
+  const { feePayer, anchor, settlement } = app.keys;
+  await app.chain.send(buildRegisterLot(app.umi, {
+    asset, collection: m.collectionAsset, collectionAuthority: anchor, payer: feePayer, owner: m.wallet,
+    name: `${item.title} ×${quantity}`.slice(0, 32), uri: `${app.config.appUrl}/api/meta/item/${id}`,
+    registrationHash: item.registrationHash, merchant: m.id, merchantDomain: m.domain ?? "", lotOf: item.asset!, quantity,
+    settlement: settlement.publicKey,
+  }).setFeePayer(feePayer));
+  const [row] = await app.db.insert(items).values({
+    id, merchantId: m.id, asset: asset.publicKey, title: `${item.title} ×${quantity}`, description: item.description,
+    priceUnits: item.priceUnits * BigInt(quantity), photos: item.photos, fingerprint: item.fingerprint,
+    registrationHash: item.registrationHash, originSig: item.originSig, status: "listed", lotOf: item.id, quantity,
+  }).returning();
   return row;
 }
 

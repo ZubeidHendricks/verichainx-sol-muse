@@ -2,7 +2,7 @@ import { caip10, solanaChain } from "@/lib/chains";
 import { needBody, newEnvelope, signEnvelope, type Envelope, type Turn } from "@/lib/envelope";
 import { formatUsdc, parseUsdc } from "@/lib/money";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import type { App } from "../app";
 import { schema } from "../db";
@@ -88,7 +88,7 @@ function needEnvelope(app: App, text: string, budget?: string, conversation: Tur
 /** What a shop registered at origin for its listed items: the maker's own record, to check a rep's words against. */
 async function registeredItems(app: App, merchantId: string) {
   const rows = await app.db.select({ title: schema.items.title, description: schema.items.description, price: schema.items.priceUnits })
-    .from(schema.items).where(and(eq(schema.items.merchantId, merchantId), eq(schema.items.status, "listed")));
+    .from(schema.items).where(and(eq(schema.items.merchantId, merchantId), eq(schema.items.status, "listed"), isNull(schema.items.lotOf)));
   return rows.slice(0, 8).map((r) => ({ title: r.title, description: r.description, price: formatUsdc(r.price) }));
 }
 

@@ -7,13 +7,14 @@
  */
 import { getApp } from "../src/server/app";
 import { schema } from "../src/server/db";
-import { markDemoShopsVerified, seedDemoShops } from "../src/server/demo-shops";
+import { markDemoShopsVerified, seedDemoShops, setDemoStock } from "../src/server/demo-shops";
 
 process.loadEnvFile(".env.local");
 const app = await getApp();
 if ((await app.db.select().from(schema.merchants)).length) {
   const domains = await markDemoShopsVerified(app);
-  console.log(`shops already exist; marked ${domains.join(", ")} verified`);
+  await setDemoStock(app);
+  console.log(`shops already exist; marked ${domains.join(", ")} verified and set their stock`);
   process.exit(0);
 }
 await seedDemoShops(app, console.log);

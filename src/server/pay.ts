@@ -1,5 +1,5 @@
 import { generateSigner, publicKey, transactionBuilder } from "@metaplex-foundation/umi";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { hashRecord } from "@/lib/canonical";
 import { formatUsdc } from "@/lib/money";
@@ -91,6 +91,10 @@ export async function refreshOrder(app: App, orderId: string): Promise<Order> {
     events: [...order.events, { status: "paid", at: app.now().toISOString(), sig: tx.signature }],
   }).where(and(eq(orders.id, orderId), eq(orders.status, "pending"))).returning();
   await app.db.update(items).set({ status: "sold" }).where(eq(items.id, ctx.item.id));
+  if (paid && ctx.item.lotOf) {
+    // A lot sold: its units come off the item's stock.
+    await app.db.update(items).set({ stock: sql`greatest(${items.stock} - ${ctx.item.quantity}, 0)` }).where(eq(items.id, ctx.item.lotOf));
+  }
   return paid ?? order;
 }
 

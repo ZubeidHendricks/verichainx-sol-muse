@@ -30,3 +30,9 @@ The Shopify catalog search, store and dropship checks, scorecard, MCP tools, age
 agent-buy bot were first built in a sibling app, `verichainx-shop` (Vercel project of the same name, created 30 October
 2026, during the hackathon), and ported here
 on 1 November 2026, adapted to this app's chain port, verdicts and agent-to-agent chat.
+
+## Procurement for companies (3 November 2026)
+
+Company boards, the procurement agent, spending policy, voting and lots (`src/server/procure.ts`, `src/app/teams/`)
+were written here on 3 November 2026, during the hackathon. The board's voting was guided by a feature list from
+another of the author's apps (a shared Kanban board with votes); no code was copied from it.

@@ -53,6 +53,38 @@ export function buildRegisterItem(umi: Umi, a: {
 }
 
 /**
+ * A lot: a quantity of a shop's item, sold as one NFT, minted when a company orders it. It carries the item's
+ * origin hash, so it checks against the same origin record, and it's minted already listed (the settlement key
+ * as transfer delegate), so the usual atomic purchase moves it. Only for items the shop gave a stock count:
+ * setting stock is the shop's consent to lots being minted into its wallet.
+ */
+export function buildRegisterLot(umi: Umi, a: {
+  asset: Signer; collection: string; collectionAuthority: Signer; payer: Signer;
+  owner: string; name: string; uri: string; registrationHash: string; merchant: string; merchantDomain: string;
+  lotOf: string; quantity: number; settlement: string;
+}) {
+  return create(umi, {
+    asset: a.asset,
+    collection: { publicKey: publicKey(a.collection), oracles: [], lifecycleHooks: [] },
+    authority: a.collectionAuthority,
+    payer: a.payer,
+    owner: publicKey(a.owner),
+    name: a.name,
+    uri: a.uri,
+    plugins: [{
+      type: "Attributes",
+      attributeList: [
+        { key: "registration_hash", value: a.registrationHash },
+        { key: "merchant", value: a.merchant },
+        { key: "merchant_domain", value: a.merchantDomain },
+        { key: "lot_of", value: a.lotOf },
+        { key: "quantity", value: String(a.quantity) },
+      ],
+    }, { type: "TransferDelegate", authority: { type: "Address", address: publicKey(a.settlement) } }],
+  });
+}
+
+/**
  * §7.2: listing hands the transfer delegate to the settlement key, so a sale can move the NFT without
  * the merchant's key. Core resets the delegate to the new owner on transfer.
  */

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 
 import type { Turn } from "@/lib/envelope";
 
@@ -35,7 +35,7 @@ const ORDER: Record<Recommendation, number> = { recommended: 0, caution: 1, avoi
 export async function greeting(app: App): Promise<ChatMessage[]> {
   const shops = await app.db.select({ m: schema.merchants, title: schema.items.title, description: schema.items.description })
     .from(schema.items).innerJoin(schema.merchants, eq(schema.items.merchantId, schema.merchants.id))
-    .where(and(eq(schema.items.status, "listed"), isNotNull(schema.merchants.domainVerifiedAt)))
+    .where(and(eq(schema.items.status, "listed"), isNull(schema.items.lotOf), isNotNull(schema.merchants.domainVerifiedAt)))
     .orderBy(desc(schema.items.createdAt));
   const host = shops[0];
   const agentIntro: ChatMessage = { kind: "agent", text: "I'm your agent. I don't work for any shop: before you pay, I check every "
