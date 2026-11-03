@@ -8,6 +8,8 @@ it recommended, caution or avoid. The shopper then buys with one wallet signatur
 protocol fee, moves the item's Metaplex Core NFT to the buyer and records the order with a memo.
 Either all of it lands or none of it does.
 
+Built for the Meta Global AI Developer Hackathon: the shopper's agent runs on Muse Spark (Meta Model API).
+
 The full spec is in [`docs/SPEC.md`](docs/SPEC.md). Prior work and what came from where is in
 [`PRIOR_WORK.md`](PRIOR_WORK.md).
 
