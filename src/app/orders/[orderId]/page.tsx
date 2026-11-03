@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { Fiat } from "@/app/ui/fiat";
 import { getApp } from "@/server/app";
 import { NotFound } from "@/server/catalog";
 import { orderPage } from "@/server/views";
@@ -29,7 +30,7 @@ async function Order({ params }: { params: Promise<{ orderId: string }> }) {
         <p className="eyebrow">Order {v.order.id}</p>
         <h1 className="display title">{paid ? "Paid" : "Waiting for payment"}</h1>
         <p style={{ fontSize: 18 }}>
-          {v.item.title} from {v.merchant.domain ?? v.merchant.name}, {v.price} USDC.
+          {v.item.title} from {v.merchant.domain ?? v.merchant.name}, {v.price} USDC <Fiat usdc={v.price} />.
           {paid ? " The ownership NFT is in the buyer's wallet." : " Refresh this page after the wallet signs."}
         </p>
       </div>

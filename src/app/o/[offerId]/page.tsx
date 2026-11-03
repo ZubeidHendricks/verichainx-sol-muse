@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { freshOffer } from "@/app/actions";
+import { Fiat } from "@/app/ui/fiat";
 import { EvidenceList, VERDICT } from "@/app/ui/tag";
 import { PayStatus } from "@/app/ui/pay-status";
 import { WalletBuy } from "@/app/ui/wallet-buy";
@@ -38,7 +39,7 @@ async function Offer({ params }: { params: Promise<{ offerId: string }> }) {
         <div>
           <p className="eyebrow">{merchant.domain ?? merchant.name}{merchant.verified ? " · verified shop" : " · shop not verified yet"}</p>
           <h1 className="display title">{item.title}</h1>
-          <p className="display" style={{ fontSize: 34, margin: 0 }}>{offer.price} <span className="eyebrow">USDC</span></p>
+          <p className="display" style={{ fontSize: 34, margin: 0 }}>{offer.price} <span className="eyebrow">USDC</span> <Fiat usdc={offer.price} /></p>
           {item.description && <p style={{ maxWidth: "58ch" }}>{item.description}</p>}
         </div>
         {item.photos[0] && (

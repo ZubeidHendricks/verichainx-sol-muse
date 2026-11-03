@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
+import { Fiat } from "../ui/fiat";
 import { addFunds, askAgent, joinCompany, savePolicy, startCompany, type TeamState } from "./actions";
 
 export function Result({ state }: { state: TeamState }) {
@@ -45,11 +46,12 @@ const EXAMPLES = [
 
 export function AskForm({ companyId }: { companyId: string }) {
   const [state, action, pending] = useActionState(askAgent.bind(null, companyId), {});
+  const [budget, setBudget] = useState("6000");
   return (
     <form action={action} className="request">
       <label className="what">What does the company need?<input name="what" required maxLength={200} placeholder="woven tote bags for conference speakers" /></label>
       <label>Quantity<input name="quantity" required inputMode="numeric" pattern="[0-9]+" defaultValue="40" /></label>
-      <label>Total budget (USDC)<input name="budget" required inputMode="decimal" defaultValue="6000" /></label>
+      <label>Budget (USDC) <Fiat usdc={budget} /><input name="budget" required inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} /></label>
       <button className="btn" type="submit" disabled={pending}>{pending ? "Sourcing…" : "Ask the agent"}</button>
       {pending && <p className="typing" role="status">The procurement agent is asking every shop and checking each offer</p>}
       {!pending && (

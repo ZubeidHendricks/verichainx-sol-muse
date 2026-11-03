@@ -4,6 +4,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { Fiat } from "@/app/ui/fiat";
 import { walletChain } from "@/lib/wallet";
 import { getApp } from "@/server/app";
 import { SESSION_COOKIE, sessionAddress } from "@/server/auth";
@@ -62,7 +63,7 @@ async function Board({ searchParams }: { searchParams: Promise<Search> }) {
           <h2 className="eyebrow">Items in your wallet</h2>
           {held.map((i) => (
             <div key={i.id} className="stack" style={{ gap: 8 }}>
-              <p style={{ margin: 0 }}><Link href={`/i/${i.asset}`}>{i.title}</Link> <span className="small muted">· bought for {i.paid} USDC</span></p>
+              <p style={{ margin: 0 }}><Link href={`/i/${i.asset}`}>{i.title}</Link> <span className="small muted">· bought for {i.paid} USDC <Fiat usdc={i.paid} /></span></p>
               <ResellForm itemId={i.id} address={address} chain={chain} />
             </div>
           ))}
@@ -121,7 +122,7 @@ async function Board({ searchParams }: { searchParams: Promise<Search> }) {
                       {m.orders.map((o) => (
                         <tr key={o.id}>
                           <td><Link className="mono" href={`/orders/${o.id}`}>{o.id}</Link></td>
-                          <td>{o.title} <span className="small muted">· {o.price} USDC</span></td>
+                          <td>{o.title} <span className="small muted">· {o.price} USDC <Fiat usdc={o.price} /></span></td>
                           <td><span className={`pill ${o.status}`}>{o.status}</span></td>
                           <td>
                             {o.status === "paid" && (

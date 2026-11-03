@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Evidence, Recommendation } from "@/server/agents/verify";
 import type { Scorecard } from "@/server/stores/scorecard";
 
+import { Fiat } from "./fiat";
 import { ScoreCard, ScoreSeal } from "./score";
 
 /** Plain-language verdicts, shared by the shop results and the offer page. */
@@ -71,7 +72,8 @@ export function Tag(p: TagProps) {
         <h3>{p.title}</h3>
         <p className="shop">{p.shop}</p>
         <div className="price-row">
-          <p className="price">{p.price}{p.currency !== "" && <small>{p.currency ?? "USDC"}</small>}</p>
+          <p className="price">{p.price}{p.currency !== "" && <small>{p.currency ?? "USDC"}</small>}
+            {p.currency === undefined && <Fiat usdc={p.price} />}</p>
           {p.scorecard && <ScoreSeal score={p.scorecard.overall} label={p.verdict} />}
           {p.image && /^https?:\/\//.test(p.image) && (
             // eslint-disable-next-line @next/next/no-img-element -- shop photos can be on any host

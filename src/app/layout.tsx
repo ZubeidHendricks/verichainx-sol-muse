@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Archivo, IBM_Plex_Mono, Instrument_Sans } from "next/font/google";
 import Link from "next/link";
 
+import { CurrencyPicker } from "./ui/fiat";
+
 import "./globals.css";
 
 const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"], axes: ["wdth"] });
@@ -25,12 +27,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/merchant">Sell</Link>
             <Link href="/runs">Runs</Link>
             <Link href="/developers">Developers</Link>
+            <CurrencyPicker />
             <span className="net">Solana devnet</span>
           </nav>
         </header>
         <main className="page">{children}</main>
         <footer className="site-foot">
-          Test network only: prices are in test USDC and nothing here costs real money.
+          Test network only: prices are in test USDC and nothing here costs real money. 1 USDC = 1 US dollar; other currencies use a daily exchange rate.
         </footer>
       </body>
     </html>

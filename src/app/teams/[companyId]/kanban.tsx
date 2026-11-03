@@ -8,6 +8,7 @@ import type { CardEvent, PolicyCheck } from "@/server/db/schema";
 import type { Consensus, Vote } from "@/server/procure";
 import type { Scorecard } from "@/server/stores/scorecard";
 
+import { Fiat } from "../../ui/fiat";
 import { ScoreCard } from "../../ui/score";
 import { approve, move, vote, type TeamState } from "../actions";
 
@@ -120,7 +121,7 @@ function CardView({ companyId, card: c, approver }: { companyId: string; card: B
         <span className={`stamp ${c.label}`}>{STAMP[c.label] ?? c.label}</span>
       </div>
       <p className="sum">
-        {c.quantity} × {c.unitPrice}{c.total && <> = <strong>{c.total} USDC</strong></>}
+        {c.quantity} × {c.unitPrice}{c.total && <> = <strong>{c.total} USDC</strong> <Fiat usdc={c.total} /></>}
       </p>
       {c.reasons[0] && <p className="small reason">{c.reasons[0]}</p>}
       {c.column === "ordered" ? (
@@ -171,7 +172,7 @@ function CardView({ companyId, card: c, approver }: { companyId: string; card: B
           <>
             <button type="button" className="btn pay small" disabled={pending}
               onClick={() => { setConfirming(false); act(() => approve(companyId, c.id)); }}>
-              {pending ? "Paying…" : `Pay ${c.total} USDC`}
+              {pending ? "Paying…" : <>Pay {c.total} USDC <Fiat usdc={c.total} /></>}
             </button>
             <button type="button" className="btn ghost small" disabled={pending} onClick={() => setConfirming(false)}>Cancel</button>
           </>

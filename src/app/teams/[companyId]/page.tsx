@@ -7,6 +7,7 @@ import { Suspense } from "react";
 
 import { explorerTx } from "@/lib/chains";
 import { formatUsdc } from "@/lib/money";
+import { Fiat } from "@/app/ui/fiat";
 import { getApp } from "@/server/app";
 import { NotFound } from "@/server/catalog";
 import { boardView, inviteKey, memberFromToken, teamCookie } from "@/server/procure";
@@ -77,9 +78,9 @@ async function Board({ params, searchParams }: { params: Params; searchParams: S
           <p className="small muted" style={{ margin: 0 }}>You&apos;re {me.name}, {approver ? "an approver" : "a member"}.</p>
         </div>
         <dl className="ledger">
-          <div><dt>Wallet</dt><dd>{v.balance === null ? "–" : formatUsdc(v.balance)} <small>USDC</small></dd></div>
-          <div><dt>Spent this month</dt><dd>{formatUsdc(v.spent)} <small>of {company.policy.monthly_usdc}</small></dd></div>
-          <div><dt>Per order</dt><dd>{company.policy.per_order_usdc} <small>USDC max</small></dd></div>
+          <div><dt>Wallet</dt><dd>{v.balance === null ? "–" : formatUsdc(v.balance)} <small>USDC</small>{v.balance !== null && <Fiat usdc={formatUsdc(v.balance)} />}</dd></div>
+          <div><dt>Spent this month</dt><dd>{formatUsdc(v.spent)} <small>of {company.policy.monthly_usdc}</small><Fiat usdc={formatUsdc(v.spent)} /></dd></div>
+          <div><dt>Per order</dt><dd>{company.policy.per_order_usdc} <small>USDC max</small><Fiat usdc={company.policy.per_order_usdc} /></dd></div>
         </dl>
       </header>
 
