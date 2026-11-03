@@ -42,7 +42,7 @@ async function Board({ params, searchParams }: { params: Params; searchParams: S
     return (
       <div className="board stack">
         <p className="eyebrow">Company board</p>
-        <h1 className="display title">{company.name}</h1>
+        <h1 className="title">{company.name}</h1>
         {role ? (
           <section className="panel stack" style={{ maxWidth: 480 }}>
             <p style={{ margin: 0 }}>You&apos;ve been invited to {company.name}&apos;s procurement board as {role === "approver" ? "an approver" : "a member"}.</p>
@@ -68,18 +68,24 @@ async function Board({ params, searchParams }: { params: Params; searchParams: S
     };
   });
   const latest = v.requests[0];
+  const monthly = Number(company.policy.monthly_usdc) || 0;
+  const used = monthly ? Math.min(100, Math.round((Number(formatUsdc(v.spent)) / monthly) * 100)) : 0;
 
   return (
     <div className="board stack">
       <header className="team-head">
         <div>
           <p className="eyebrow">Company board · {v.people.length} {v.people.length === 1 ? "person" : "people"}</p>
-          <h1 className="display title" style={{ marginBottom: 4 }}>{company.name}</h1>
+          <h1 className="title">{company.name}</h1>
           <p className="small muted" style={{ margin: 0 }}>You&apos;re {me.name}, {approver ? "an approver" : "a member"}.</p>
         </div>
         <dl className="ledger">
           <div><dt>Wallet</dt><dd>{v.balance === null ? "–" : formatUsdc(v.balance)} <small>USDC</small>{v.balance !== null && <Fiat usdc={formatUsdc(v.balance)} />}</dd></div>
-          <div><dt>Spent this month</dt><dd>{formatUsdc(v.spent)} <small>of {company.policy.monthly_usdc}</small><Fiat usdc={formatUsdc(v.spent)} /></dd></div>
+          <div className="month">
+            <dt>Spent this month</dt>
+            <dd>{formatUsdc(v.spent)} <small>of {company.policy.monthly_usdc}</small><Fiat usdc={formatUsdc(v.spent)} /></dd>
+            <span className="gauge" role="img" aria-label={`${used}% of the monthly limit used`}><span style={{ width: `${used}%` }} /></span>
+          </div>
           <div><dt>Per order</dt><dd>{company.policy.per_order_usdc} <small>USDC max</small><Fiat usdc={company.policy.per_order_usdc} /></dd></div>
         </dl>
       </header>

@@ -13,7 +13,7 @@ export default function Page() {
   return (
     <section className="board">
       <p className="eyebrow">History</p>
-      <h1 className="display title">Agent runs</h1>
+      <h1 className="title">Agent runs</h1>
       <p className="muted" style={{ maxWidth: "58ch" }}>
         Every request to the shopping agent, with the model that ran it and how many offers it turned down.
       </p>

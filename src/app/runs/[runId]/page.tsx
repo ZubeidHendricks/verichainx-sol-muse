@@ -26,7 +26,7 @@ async function Run({ params }: { params: Promise<{ runId: string }> }) {
   return (
     <>
       <p className="eyebrow">Agent run · {new Date(v.createdAt).toUTCString()}</p>
-      <h1 className="display title">&ldquo;{v.message}&rdquo;</h1>
+      <h1 className="title quote">&ldquo;{v.message}&rdquo;</h1>
       <p className="small muted">The verdicts are as they were when the agent ran. Open an offer to check it again now.</p>
       <RunView reply={v.reply} />
     </>

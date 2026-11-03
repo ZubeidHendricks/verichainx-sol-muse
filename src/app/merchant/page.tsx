@@ -25,7 +25,7 @@ export default function Page({ searchParams }: { searchParams: Promise<Search> }
     <div className="board stack">
       <section className="hero">
         <p className="eyebrow">For shops</p>
-        <h1 className="display" style={{ fontSize: "clamp(30px, 5vw, 54px)", margin: "8px 0 12px" }}>Register what you make</h1>
+        <h1 className="display sub">Register what you make</h1>
         <p>
           Each item gets an ownership NFT with its origin record, in your wallet. While you hold it and it&apos;s listed,
           only you can sell it: an offer for it from anyone else is flagged to shoppers. Bought something here? You can

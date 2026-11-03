@@ -33,7 +33,7 @@ async function Claim({ params, searchParams }: Props) {
       <section className="stack">
         <div>
           <p className="eyebrow">{v.shop} · order {v.orderName}</p>
-          <h1 className="display title">{v.item.title}</h1>
+          <h1 className="title">{v.item.title}</h1>
           <p style={{ maxWidth: "58ch" }}>
             Your order comes with the item&apos;s ownership NFT: the maker&apos;s record of where it came from. Keep it in your
             wallet to prove it&apos;s genuine, or to resell it later.

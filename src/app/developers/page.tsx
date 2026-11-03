@@ -22,7 +22,7 @@ export default function Page() {
     <div className="board stack">
       <section className="hero">
         <p className="eyebrow">For developers</p>
-        <h1 className="display" style={{ fontSize: "clamp(30px, 5vw, 54px)", margin: "8px 0 12px" }}>Check a seller before your agent buys</h1>
+        <h1 className="display sub">Check a seller before your agent buys</h1>
         <p style={{ maxWidth: "62ch" }}>
           The checks our shopping agent runs are an MCP server. Your agent calls them and gets back evidence, a label and a
           scorecard. Labels come from fixed rules, so no model can talk a copy into a recommendation.

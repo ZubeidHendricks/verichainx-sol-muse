@@ -32,7 +32,7 @@ async function Asset({ params }: { params: Promise<{ asset: string }> }) {
       <section className="stack">
         <div>
           <p className="eyebrow">Ownership NFT · Metaplex Core</p>
-          <h1 className="display title">{r.item?.title ?? r.name}</h1>
+          <h1 className="title">{r.item?.title ?? r.name}</h1>
           <p style={{ fontSize: 18, maxWidth: "58ch" }}>
             Held by {holder}. {r.listed ? "It is listed for sale through VeriChainX." : "It is not listed for sale."}
           </p>

@@ -46,19 +46,32 @@ const EXAMPLES = [
 
 export function AskForm({ companyId }: { companyId: string }) {
   const [state, action, pending] = useActionState(askAgent.bind(null, companyId), {});
+  const [what, setWhat] = useState("");
+  const [quantity, setQuantity] = useState("40");
   const [budget, setBudget] = useState("6000");
   return (
     <form action={action} className="request">
-      <label className="what">What does the company need?<input name="what" required maxLength={200} placeholder="woven tote bags for conference speakers" /></label>
-      <label>Quantity<input name="quantity" required inputMode="numeric" pattern="[0-9]+" defaultValue="40" /></label>
-      <label>Budget (USDC) <Fiat usdc={budget} /><input name="budget" required inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} /></label>
+      <label className="what">What does the company need?
+        <input name="what" required maxLength={200} placeholder="woven tote bags for conference speakers" value={what} onChange={(e) => setWhat(e.target.value)} />
+      </label>
+      <label>How many<input name="quantity" required inputMode="numeric" pattern="[0-9]+" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
+      <label className="budget">Budget, USDC
+        <input name="budget" required inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} />
+        <Fiat usdc={budget} />
+      </label>
       <button className="btn" type="submit" disabled={pending}>{pending ? "Sourcing…" : "Ask the agent"}</button>
-      {pending && <p className="typing" role="status">The procurement agent is asking every shop and checking each offer</p>}
-      {!pending && (
-        <p className="small muted examples">
-          Try: {EXAMPLES.map((e, i) => <span key={i}>{i > 0 && " · "}&ldquo;{e.what}&rdquo; ×{e.quantity}</span>)}
-        </p>
-      )}
+      {pending
+        ? <p className="typing" role="status">The procurement agent is asking every shop and checking each offer</p>
+        : (
+          <div className="chips examples">
+            {EXAMPLES.map((e) => (
+              <button key={e.what} type="button" className="chip"
+                onClick={() => { setWhat(e.what); setQuantity(e.quantity); setBudget(e.budget); }}>
+                {e.quantity} {e.what}
+              </button>
+            ))}
+          </div>
+        )}
       <Result state={state} />
     </form>
   );

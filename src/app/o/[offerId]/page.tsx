@@ -38,7 +38,7 @@ async function Offer({ params }: { params: Promise<{ offerId: string }> }) {
       <section className="stack">
         <div>
           <p className="eyebrow">{merchant.domain ?? merchant.name}{merchant.verified ? " · verified shop" : " · shop not verified yet"}</p>
-          <h1 className="display title">{item.title}</h1>
+          <h1 className="title">{item.title}</h1>
           <p className="display" style={{ fontSize: 34, margin: 0 }}>{offer.price} <span className="eyebrow">USDC</span> <Fiat usdc={offer.price} /></p>
           {item.description && <p style={{ maxWidth: "58ch" }}>{item.description}</p>}
         </div>
