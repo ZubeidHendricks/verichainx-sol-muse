@@ -30,7 +30,7 @@ The full spec is in [`docs/SPEC.md`](docs/SPEC.md). Prior work and what came fro
 
 ## Status
 
-Work in progress, devnet only. Live at https://verichainx-sol.vercel.app.
+Work in progress, devnet only. Live at https://verichainx-sol-muse.vercel.app.
 
 **Built:**
 - Signed `vcx-agent/1` envelopes.

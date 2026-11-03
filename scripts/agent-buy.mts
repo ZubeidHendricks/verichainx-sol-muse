@@ -4,13 +4,13 @@
  * the order to be paid. Copy this into your own agent.
  *
  *   npx tsx scripts/agent-buy.mts [app url] [query] [owner wallet]
- *   npx tsx scripts/agent-buy.mts https://verichainx-sol.vercel.app "woven tote"
+ *   npx tsx scripts/agent-buy.mts https://verichainx-sol-muse.vercel.app "woven tote"
  */
 import { generateSigner, signTransaction } from "@metaplex-foundation/umi";
 
 import { makeUmi } from "../src/lib/solana/umi";
 
-const [base = "https://verichainx-sol.vercel.app", query = "woven tote", owner] = process.argv.slice(2);
+const [base = "https://verichainx-sol-muse.vercel.app", query = "woven tote", owner] = process.argv.slice(2);
 const CAP_USDC = 200;
 
 let id = 0;
