@@ -13,6 +13,10 @@ Narration is about 420 words, read at an easy pace. Times are targets; the cuts 
 - Do one full rehearsal locally on Groq (`AGENT_PROVIDER=groq`) first. The live take on prod uses Muse Spark: about
   R0.5–1 per take for both scenes, so keep it to two or three takes.
 - Set the currency picker to ZAR (or your judges' currency) before the board scene.
+- Stock is real: the live Woven Market Tote has 60, so only one 40-tote payment goes through. Rehearse up to the
+  "Pay … USDC" button and press it only in the final take. If you need another take, the shop's stock has to be reset
+  first (`npm run devnet:seed` against the live database sets it back to 60), or use the 25 leather wallets example
+  instead (120 in stock).
 
 ## Script
 
@@ -34,11 +38,11 @@ Narration is about 420 words, read at an easy pace. Times are targets; the cuts 
 **Screen:** the pitches arrive; scroll to the copier's offer marked Avoid, then the real tote marked Verified.
 
 > My agent, also Muse Spark, checks every pitch against Solana: who the seller is, who holds the item's NFT, its
-> origin record, the photos and the price. This outlet's tote is cheaper, but its photos aren't the maker's and it
-> doesn't hold the item. Avoid. Code makes that call, so the model can't recommend something the checks rule out.
+> origin record, the photos and the price. This outlet claims the same tote at 45% off, but the item's NFT belongs to
+> another seller. Avoid. Code makes that call, so the model can't recommend something the checks rule out.
 
-**Screen:** open the Verified offer, point at the scorecard and the price with its rand amount, press Buy, sign in
-Phantom.
+**Screen:** on the Verified tote, point at the 0–100 score and the price with its rand amount, press View and pay,
+then pay and sign in Phantom.
 
 > One signature. A single transaction pays the maker in USDC, takes a 1% fee and moves the ownership NFT to me.
 > Either all of it lands or none of it does.
@@ -57,12 +61,13 @@ Phantom.
 > I ask the procurement agent for forty tote bags on a six-thousand-dollar budget. It sources from makers on Solana
 > and from Shopify stores, and every option gets the same checks, plus the company's rules and the shop's stock.
 
-**Screen:** cards land in Sourced. Open the "options don't pass the policy" drawer for a second.
+**Screen:** the agent's summary appears and the best option is already on the Shortlist. Open the "options don't
+pass the policy" drawer under the lanes for a second.
 
-> Options that break a rule never reach the lanes. They wait down here, with the reason.
+> The agent puts the best option that passes on the shortlist. Options that break a rule never reach the lanes: the
+> outlet copies, and store items the company wallet can't pay for. They wait down here, with the reason.
 
-**Screen:** press Shortlist on the best card. In the second window, Thandi votes Must have; back in the first, vote
-Nice to have. The meter fills.
+**Screen:** in the second window, Thandi votes Must have; back in the first, vote Nice to have. The meter fills.
 
 > The team votes: must have, nice to have, or skip. The board updates itself, and it flags when the team is split.
 
@@ -71,7 +76,7 @@ Nice to have. The meter fills.
 > Only an approver can pay, and code checks the policy again at that moment, whatever the votes say. The company
 > wallet buys one lot NFT for all forty units, carrying the maker's origin record.
 
-**Screen:** the card moves to Ordered; open Transaction on Solana Explorer.
+**Screen:** the card moves to Ordered and the wallet and month figures drop; open Transaction on Solana Explorer.
 
 > That's the company's proof of what it bought, from whom, and that the seller was real.
 
